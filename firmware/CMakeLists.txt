@@ -5,7 +5,10 @@ set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 
-add_library(converter_core src/converter.c)
+add_library(converter_core
+    src/converter.c
+    src/converter_runtime.c
+)
 target_include_directories(converter_core PUBLIC include)
 if(MSVC)
     target_compile_options(converter_core PRIVATE /W4 /WX)
@@ -23,4 +26,8 @@ if(BUILD_TESTING)
     add_executable(converter_tests tests/test_converter.c)
     target_link_libraries(converter_tests PRIVATE converter_core ${PLATFORM_MATH_LIBRARY})
     add_test(NAME converter_tests COMMAND converter_tests)
+
+    add_executable(converter_runtime_tests tests/test_runtime.c)
+    target_link_libraries(converter_runtime_tests PRIVATE converter_core ${PLATFORM_MATH_LIBRARY})
+    add_test(NAME converter_runtime_tests COMMAND converter_runtime_tests)
 endif()
