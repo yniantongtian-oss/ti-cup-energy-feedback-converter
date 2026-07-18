@@ -5,12 +5,7 @@
 #include <stdio.h>
 
 static converter_measurement_t safe_measurement(void) {
-    converter_measurement_t measurement = {
-        .input_current_a = 0.0f,
-        .bus_voltage_v = 12.0f,
-        .temperature_c = 25.0f,
-        .sample_valid = true,
-    };
+    converter_measurement_t measurement = {0.0f, 12.0f, 25.0f, true};
     return measurement;
 }
 
