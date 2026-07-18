@@ -33,18 +33,17 @@ static uint32_t evaluate_faults(const converter_config_t *config,
 }
 
 converter_config_t converter_default_config(void) {
-    converter_config_t config = {
-        .kp = 0.08f,
-        .ki = 8.0f,
-        .current_limit_a = 2.0f,
-        .current_trip_a = 2.5f,
-        .bus_voltage_min_v = 8.0f,
-        .bus_voltage_max_v = 30.0f,
-        .temperature_trip_c = 70.0f,
-        .duty_limit = 0.85f,
-        .current_slew_a_per_s = 5.0f,
-        .integrator_limit = 0.75f,
-    };
+    converter_config_t config;
+    config.kp = 0.08f;
+    config.ki = 8.0f;
+    config.current_limit_a = 2.0f;
+    config.current_trip_a = 2.5f;
+    config.bus_voltage_min_v = 8.0f;
+    config.bus_voltage_max_v = 30.0f;
+    config.temperature_trip_c = 70.0f;
+    config.duty_limit = 0.85f;
+    config.current_slew_a_per_s = 5.0f;
+    config.integrator_limit = 0.75f;
     return config;
 }
 
