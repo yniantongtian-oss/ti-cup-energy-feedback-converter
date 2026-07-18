@@ -52,7 +52,7 @@ Our goal is to help undergraduate teams rapidly develop high-performance, safe, 
 
 ## 当前状态 | Current Status
 
-**开发阶段**：早期开发中（Active Development）
+**开发阶段**：早期开发中（Active Development)
 
 已完成：
 - 项目整体架构与文档体系
@@ -89,7 +89,7 @@ ti-cup-energy-feedback-converter/
 
 ## 快速开始 | Quick Start
 
-详细的上手步骤请参考 [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md)。
+详细的上手步骤请参考 [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md).
 
 基本流程：
 1. 克隆本仓库
@@ -108,7 +108,7 @@ ti-cup-energy-feedback-converter/
 - 提交 Pull Request（代码、文档、示例）
 - 分享真实比赛使用反馈
 
-请先阅读 [`docs/CONTRIBUTING.md`](docs/CONTRIBUTING.md)。
+请先阅读 [`docs/CONTRIBUTING.md`](docs/CONTRIBUTING.md).
 
 ---
 
@@ -121,8 +121,6 @@ ti-cup-energy-feedback-converter/
 ## 联系我们 | Contact
 
 如有任何问题、建议或合作意向，欢迎通过 **GitHub Issues** 联系我们。
-
-**维护者**：yniantongtian-oss（龙岩学院 · 光电信息科学与工程 · 25级）
 
 ---
 
