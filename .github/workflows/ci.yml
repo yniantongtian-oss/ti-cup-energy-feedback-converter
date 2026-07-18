@@ -9,16 +9,24 @@ permissions:
 
 jobs:
   portable-core:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - name: Configure
         run: cmake -S firmware -B build -DCMAKE_BUILD_TYPE=Release
       - name: Build
-        run: cmake --build build --parallel
+        run: cmake --build build --config Release --parallel
       - name: Test
-        run: ctest --test-dir build --output-on-failure
-      - name: Run host demo
+        run: ctest --test-dir build -C Release --output-on-failure
+      - name: Run host demo (Unix)
+        if: runner.os != 'Windows'
         run: ./build/converter_demo > demo.csv
+      - name: Run host demo (Windows)
+        if: runner.os == 'Windows'
+        run: .\build\Release\converter_demo.exe | Out-File -Encoding utf8 demo.csv
       - name: Run dependency-free simulation
-        run: python3 simulation/simulate.py --duration 0.1 --output simulation/output.csv
+        run: python simulation/simulate.py --duration 0.1 --output simulation/output.csv
