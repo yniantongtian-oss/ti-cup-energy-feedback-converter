@@ -11,6 +11,16 @@ static converter_runtime_t g_runtime;
 static volatile uint16_t g_adc_dma[3] = {0u, 0u, 0u};
 static bool g_emergency_latched = false;
 
+/* Incremented by AppConverter_AdcDmaUpdate() in the DMA completion callback.
+ * Read and compared in AppConverter_1msTask() to detect stale ADC samples.
+ * Must be the same width as the compare variable to handle wrap-around. */
+static volatile uint32_t g_adc_dma_count = 0u;
+static uint32_t g_adc_dma_count_last = 0u;
+
+/** Maximum number of consecutive 1 ms ticks without a new ADC conversion
+ *  before a sample is considered stale.  Reserved for future use. */
+#define ADC_FRESHNESS_TICKS_MAX (5u)
+
 static bool hardware_inputs_safe(void) {
 #if defined(HW_FAULT_GPIO_Port) && defined(HW_FAULT_Pin)
     if (HAL_GPIO_ReadPin(HW_FAULT_GPIO_Port, HW_FAULT_Pin) == GPIO_PIN_RESET) return false;
@@ -51,10 +61,16 @@ static void apply_signed_duty(float duty) {
 
 static converter_raw_sample_t current_raw_sample(void) {
     converter_raw_sample_t raw;
-    raw.current_adc = g_adc_dma[0];
-    raw.bus_adc = g_adc_dma[1];
+    /* Snapshot the DMA counter; if it has not advanced since the last call
+     * the ADC conversion has stalled and the sample must be treated as invalid. */
+    uint32_t current_count = g_adc_dma_count;
+    bool fresh = (current_count != g_adc_dma_count_last);
+    g_adc_dma_count_last = current_count;
+
+    raw.current_adc    = g_adc_dma[0];
+    raw.bus_adc        = g_adc_dma[1];
     raw.temperature_adc = g_adc_dma[2];
-    raw.sample_valid = true;
+    raw.sample_valid   = fresh;
     raw.hardware_fault = !hardware_inputs_safe();
     return raw;
 }
@@ -114,6 +130,10 @@ void AppConverter_EmergencyStop(void) {
     g_emergency_latched = true;
     converter_runtime_disarm(&g_runtime);
     force_pwm_off();
+}
+
+void AppConverter_AdcDmaUpdate(void) {
+    g_adc_dma_count++;
 }
 
 const converter_runtime_t *AppConverter_GetRuntime(void) {
