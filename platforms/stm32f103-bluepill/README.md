@@ -2,6 +2,17 @@
 
 本目录给出把 `firmware/` 中可测试控制核心接入 STM32Cube HAL 工程的参考方式。目标是让使用者能快速建立**隔离、限流、低压**原型，而不是提供可直接接市电的功率产品。
 
+## 平台层模块
+
+| 文件 | 功能 |
+|---|---|
+| `Core/Inc/app_converter.h` / `Core/Src/app_converter.c` | ADC + TIM1 + 故障输入；1 ms 调度入口；ADC 采样新鲜度检测 |
+| `Core/Inc/app_modbus.h` / `Core/Src/app_modbus.c` | Modbus RTU 从站（FC 03/04/06/10）；寄存器表与控制核心映射 |
+| `Core/Inc/app_flash_params.h` / `Core/Src/app_flash_params.c` | Flash 参数持久化（magic + version + CRC-32）；范围检查 |
+
+所有平台层模块都依赖 STM32 HAL，不参与 host-side CMake 测试；  
+可移植核心的纯 C 测试在 `firmware/tests/` 中运行。
+
 ## 推荐工具链
 
 - MCU：STM32F103C8T6（Blue Pill）
@@ -42,11 +53,13 @@
 
 1. 新建 STM32CubeIDE/Keil 工程并生成 HAL 初始化代码。
 2. 把 `firmware/include/*.h` 与 `firmware/src/converter*.c` 加入工程。
-3. 把本目录的 `Core/Inc/app_converter.h` 和 `Core/Src/app_converter.c` 加入工程。
-4. 在外设初始化完成后调用 `AppConverter_Init()`。
-5. ADC DMA 启动后，每 1 ms 调用 `AppConverter_1msTask()`。
-6. 在硬件故障和急停 EXTI 中调用 `AppConverter_EmergencyStop()`。
-7. 在 Modbus 写寄存器回调中调用设置参考值、解锁、停机或清故障接口。
+3. 把本目录的 `Core/Inc/*.h` 和 `Core/Src/*.c` 全部加入工程。
+4. 在外设初始化完成后调用 `AppConverter_Init()` 和 `AppModbus_Init(slave_addr)`。
+5. 在 `HAL_ADC_ConvCpltCallback()` 中调用 `AppConverter_AdcDmaUpdate()`。
+6. 在 USART3 接收中断（或 `HAL_UART_RxCpltCallback`）中调用 `AppModbus_ByteReceived(byte)`。
+7. 在 1 ms 调度器中依次调用 `AppConverter_1msTask(now_ms)` 和 `AppModbus_1msTick(now_ms)`。
+8. 在硬件故障和急停 EXTI 中调用 `AppConverter_EmergencyStop()`。
+9. 上电时尝试 `AppFlashParams_Load()`；若失败则使用默认值并调用 `AppFlashParams_Save()`。
 
 ## 必须实现的硬件保护
 
@@ -68,4 +81,6 @@
 4. 使用 5–12 V 限流电源和纯电阻负载进行开环验证。
 5. 最后才进行闭环调参，并从极低电流限值开始。
 
-详细通信寄存器见 [`../../docs/MODBUS_REGISTER_MAP.md`](../../docs/MODBUS_REGISTER_MAP.md)。
+完整逐项验证清单见 [`../../docs/VALIDATION_CHECKLIST.md`](../../docs/VALIDATION_CHECKLIST.md)。  
+详细通信寄存器见 [`../../docs/MODBUS_REGISTER_MAP.md`](../../docs/MODBUS_REGISTER_MAP.md)。  
+参考 BOM 见 [`../../hardware/BOM.md`](../../hardware/BOM.md)。
