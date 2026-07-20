@@ -157,13 +157,15 @@ static bool write_holding_register(uint16_t addr, uint16_t value, uint32_t now_m
         case MODBUS_HR_CURRENT_REF_MA:
             AppConverter_SetCurrentMilliamp((int16_t)value, now_ms);
             break;
-        /* NOTE: The remaining parameter registers (timeout, limits, PI gains)
-         * would require re-initialising the runtime with new config.  This is
-         * intentionally left as a placeholder — implementations must call
-         * AppConverter_Disarm() first, update AppConverter parameters via the
-         * AppFlashParams helpers, and then call AppConverter_Init() again.
-         * This prevents in-flight parameter changes from destabilising the
-         * control loop. */
+        /* Parameter registers (HR 2–9) are read-only over Modbus in this
+         * implementation.  To change control parameters safely:
+         *   1. Call AppConverter_Disarm() to reach IDLE state.
+         *   2. Update converter_config_t / converter_runtime_config_t in
+         *      application code.
+         *   3. Persist via AppFlashParams_Save(); reload on next boot via
+         *      AppFlashParams_Load().
+         * Attempting to write these registers returns exception 0x04
+         * (Server Device Failure) to prevent silent no-op updates. */
         case MODBUS_HR_CMD_TIMEOUT_MS:
         case MODBUS_HR_CURRENT_LIM_MA:
         case MODBUS_HR_CURRENT_TRIP_MA:
@@ -172,8 +174,7 @@ static bool write_holding_register(uint16_t addr, uint16_t value, uint32_t now_m
         case MODBUS_HR_TEMP_TRIP_DECI:
         case MODBUS_HR_KP_1E4:
         case MODBUS_HR_KI_1E3:
-            /* Accepted but deferred; caller must persist and reinitialise. */
-            break;
+            return false;
         default:
             return false;
     }

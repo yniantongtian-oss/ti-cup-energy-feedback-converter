@@ -46,16 +46,18 @@ extern "C" {
 #define APP_MODBUS_SILENCE_TICKS (4u)
 
 /* Holding register addresses (FC 03/06/10). */
-#define MODBUS_HR_CONTROL         (0u)
-#define MODBUS_HR_CURRENT_REF_MA  (1u)
-#define MODBUS_HR_CMD_TIMEOUT_MS  (2u)
-#define MODBUS_HR_CURRENT_LIM_MA  (3u)
-#define MODBUS_HR_CURRENT_TRIP_MA (4u)
-#define MODBUS_HR_BUS_MIN_CENTIV  (5u)
-#define MODBUS_HR_BUS_MAX_CENTIV  (6u)
-#define MODBUS_HR_TEMP_TRIP_DECI  (7u)
-#define MODBUS_HR_KP_1E4          (8u)
-#define MODBUS_HR_KI_1E3          (9u)
+#define MODBUS_HR_CONTROL         (0u)  /**< R/W: control bits (arm/disarm/clear/estop) */
+#define MODBUS_HR_CURRENT_REF_MA  (1u)  /**< R/W: current reference in mA (int16) */
+/* HR 2–9: read via FC 03; writes return exception 0x04.  Use AppFlashParams
+ * to persist parameters and reload them on the next power-on. */
+#define MODBUS_HR_CMD_TIMEOUT_MS  (2u)  /**< R (read-only over Modbus): command timeout */
+#define MODBUS_HR_CURRENT_LIM_MA  (3u)  /**< R: software current limit in mA */
+#define MODBUS_HR_CURRENT_TRIP_MA (4u)  /**< R: hardware trip threshold in mA (> limit) */
+#define MODBUS_HR_BUS_MIN_CENTIV  (5u)  /**< R: undervoltage threshold in 0.01 V units */
+#define MODBUS_HR_BUS_MAX_CENTIV  (6u)  /**< R: overvoltage threshold in 0.01 V units */
+#define MODBUS_HR_TEMP_TRIP_DECI  (7u)  /**< R: overtemperature threshold in 0.1 degC */
+#define MODBUS_HR_KP_1E4          (8u)  /**< R: proportional gain * 10000 */
+#define MODBUS_HR_KI_1E3          (9u)  /**< R: integral gain * 1000 */
 #define MODBUS_HR_COUNT           (10u)
 
 /* Control register bit definitions (HR 0). */

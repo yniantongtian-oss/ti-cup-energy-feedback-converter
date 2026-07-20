@@ -54,11 +54,16 @@ extern "C" {
  * command_timeout_ms and adc_full_scale (those are compile-time constants).
  */
 typedef struct {
-    /* Control loop */
+    /* Control loop — mirrors converter_config_t.
+     * Constraints: kp >= 0, ki >= 0, current_limit_a > 0,
+     *   current_trip_a > current_limit_a (hard requirement for fault detection),
+     *   bus_voltage_max_v > bus_voltage_min_v >= 0,
+     *   0 < duty_limit <= 1, current_slew_a_per_s > 0,
+     *   integrator_limit >= 0, temperature_trip_c > 0. */
     float kp;
     float ki;
     float current_limit_a;
-    float current_trip_a;
+    float current_trip_a;        /* Must be strictly greater than current_limit_a */
     float bus_voltage_min_v;
     float bus_voltage_max_v;
     float temperature_trip_c;

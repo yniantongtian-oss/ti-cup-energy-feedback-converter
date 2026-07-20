@@ -17,10 +17,6 @@ static bool g_emergency_latched = false;
 static volatile uint32_t g_adc_dma_count = 0u;
 static uint32_t g_adc_dma_count_last = 0u;
 
-/** Maximum number of consecutive 1 ms ticks without a new ADC conversion
- *  before a sample is considered stale.  Reserved for future use. */
-#define ADC_FRESHNESS_TICKS_MAX (5u)
-
 static bool hardware_inputs_safe(void) {
 #if defined(HW_FAULT_GPIO_Port) && defined(HW_FAULT_Pin)
     if (HAL_GPIO_ReadPin(HW_FAULT_GPIO_Port, HW_FAULT_Pin) == GPIO_PIN_RESET) return false;
