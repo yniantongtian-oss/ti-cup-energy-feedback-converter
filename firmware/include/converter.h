@@ -25,22 +25,30 @@ typedef enum {
 } converter_fault_t;
 
 typedef struct {
-    float kp;
-    float ki;
-    float current_limit_a;
+    float kp;                       /* Id/Iq PI kp, V/A (demo) */
+    float ki;                       /* Id/Iq PI ki, V/(A*s) */
+    float current_limit_a;          /* |Id| limit */
     float current_trip_a;
     float bus_voltage_min_v;
     float bus_voltage_max_v;
     float temperature_trip_c;
     float duty_limit;
+    float voltage_command_limit;    /* |ud|,|uq|,|u_alpha| clamp */
     float current_slew_a_per_s;
     float integrator_limit;
+    float mod_bus_min_v;
+    bool feedforward_enable;        /* duty = (u_alpha + U1) / Vbus */
+    bool park_enable;               /* default ON: Park + Iq=0, still PI, no PR */
 } converter_config_t;
 
 typedef struct {
-    float input_current_a;
+    float input_current_a;          /* i_alpha (measured) */
+    float current_beta_a;           /* i_beta from current SOGI */
     float bus_voltage_v;
+    float plant_voltage_v;          /* U1 */
     float temperature_c;
+    float theta_rad;                /* from SOGI-PLL */
+    bool theta_valid;
     bool sample_valid;
 } converter_measurement_t;
 
@@ -48,10 +56,18 @@ typedef struct {
     converter_state_t state;
     uint32_t faults;
     bool armed;
-    float requested_current_a;
+    float requested_current_a;      /* Id reference */
     float ramped_current_a;
-    float integrator;
+    float integrator_d;
+    float integrator_q;
+    float id_meas;
+    float iq_meas;
+    float ud;
+    float uq;
+    float voltage_command;          /* u_alpha after inv Park, volts */
     float duty_command;
+    bool feedforward_active;
+    bool park_active;
 } converter_t;
 
 converter_config_t converter_default_config(void);
