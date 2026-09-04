@@ -42,10 +42,12 @@ typedef struct {
     converter_measurement_t measurement;
     sogi_pll_config_t pll_config;
     sogi_pll_t pll;
+    float i_sogi_alpha;             /* current SOGI for Park i_beta */
+    float i_sogi_beta;
     uint32_t last_command_ms;
     bool command_received;
     bool filter_initialized;
-    bool pwm_released;              /* true only when PLL locked (and gate enabled) */
+    bool pwm_released;
 } converter_runtime_t;
 
 converter_runtime_config_t converter_runtime_default_config(void);

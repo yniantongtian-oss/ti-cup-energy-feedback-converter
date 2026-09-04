@@ -9,6 +9,9 @@ static converter_measurement_t safe_measurement(void) {
         .input_current_a = 0.0f,
         .bus_voltage_v = 12.0f,
         .plant_voltage_v = 0.0f,
+        .current_beta_a = 0.0f,
+        .theta_rad = 0.0f,
+        .theta_valid = false,
         .temperature_c = 25.0f,
         .sample_valid = true,
     };

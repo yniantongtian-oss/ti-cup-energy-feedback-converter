@@ -47,7 +47,8 @@ This document describes the overall software and hardware architecture of the en
 - Current loop rate: **~20 kHz** (TIM1 center-aligned + injected ADC). 1 kHz = slow path only.
 - Outer voltage loop — **not in this step**
 - Sync: **SOGI-PLL on U1**; PWM gated until lock; **no RAMPGEN**.
-- Park, state machine, TIM1 BKIN — **later steps (D–F), not claimed done**
+- Park + **Iq=0** (dual PI on Id/Iq); **no harmonic PR**.
+- State machine, TIM1 BKIN — **later steps (E–F), not claimed done**
 
 ## Safety & Protection | 安全与保护
 

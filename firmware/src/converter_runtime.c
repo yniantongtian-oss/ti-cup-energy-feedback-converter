@@ -24,6 +24,9 @@ static converter_measurement_t convert_sample(converter_runtime_t *runtime,
     converted.input_current_a = calibrated(raw->current_adc,
                                            config->current_gain_a_per_count,
                                            config->current_offset_a);
+    converted.current_beta_a = 0.0f;
+    converted.theta_rad = 0.0f;
+    converted.theta_valid = false;
     converted.bus_voltage_v = calibrated(raw->bus_adc,
                                          config->bus_gain_v_per_count,
                                          config->bus_offset_v);
@@ -94,10 +97,15 @@ void converter_runtime_init(converter_runtime_t *runtime,
     runtime->pll_config = sogi_pll_default_config();
     sogi_pll_init(&runtime->pll, &runtime->pll_config);
     runtime->measurement.input_current_a = 0.0f;
+    runtime->measurement.current_beta_a = 0.0f;
     runtime->measurement.bus_voltage_v = 0.0f;
     runtime->measurement.plant_voltage_v = 0.0f;
     runtime->measurement.temperature_c = 0.0f;
+    runtime->measurement.theta_rad = 0.0f;
+    runtime->measurement.theta_valid = false;
     runtime->measurement.sample_valid = false;
+    runtime->i_sogi_alpha = 0.0f;
+    runtime->i_sogi_beta = 0.0f;
     runtime->last_command_ms = 0u;
     runtime->command_received = false;
     runtime->filter_initialized = false;
@@ -152,9 +160,12 @@ void converter_runtime_step(converter_runtime_t *runtime,
 
     if (!raw_sample_is_valid(runtime, raw)) {
         invalid.input_current_a = 0.0f;
+        invalid.current_beta_a = 0.0f;
         invalid.bus_voltage_v = 0.0f;
         invalid.plant_voltage_v = 0.0f;
         invalid.temperature_c = 0.0f;
+        invalid.theta_rad = 0.0f;
+        invalid.theta_valid = false;
         invalid.sample_valid = false;
         converter_step(&runtime->controller, &runtime->control_config, &invalid, dt_s);
         runtime->pwm_released = false;
@@ -167,6 +178,20 @@ void converter_runtime_step(converter_runtime_t *runtime,
     /* Sync on U1 only — never a software ramp angle. */
     sogi_pll_step(&runtime->pll, &runtime->pll_config,
                   runtime->measurement.plant_voltage_v, dt_s);
+
+    /* Current SOGI → i_beta for Park (same omega as PLL). No harmonic PR. */
+    {
+        const float w = runtime->pll.omega_rad_s;
+        const float k = runtime->pll_config.k_sogi;
+        const float i_a = runtime->measurement.input_current_a;
+        const float d_a = k * (i_a - runtime->i_sogi_alpha) * w - runtime->i_sogi_beta * w;
+        const float d_b = runtime->i_sogi_alpha * w;
+        runtime->i_sogi_alpha += d_a * dt_s;
+        runtime->i_sogi_beta += d_b * dt_s;
+        runtime->measurement.current_beta_a = runtime->i_sogi_beta;
+        runtime->measurement.theta_rad = runtime->pll.theta_rad;
+        runtime->measurement.theta_valid = runtime->pll.locked;
+    }
 
     converter_step(&runtime->controller,
                    &runtime->control_config,

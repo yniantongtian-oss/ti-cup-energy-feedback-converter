@@ -12,6 +12,9 @@ static void test_20khz_step_runs(void) {
         .input_current_a = 0.0f,
         .bus_voltage_v = 24.0f,
         .plant_voltage_v = 0.0f,
+        .current_beta_a = 0.0f,
+        .theta_rad = 0.0f,
+        .theta_valid = false,
         .temperature_c = 25.0f,
         .sample_valid = true,
     };
@@ -40,6 +43,9 @@ static void test_reject_bad_timestep_still(void) {
         .input_current_a = 0.0f,
         .bus_voltage_v = 12.0f,
         .plant_voltage_v = 0.0f,
+        .current_beta_a = 0.0f,
+        .theta_rad = 0.0f,
+        .theta_valid = false,
         .temperature_c = 25.0f,
         .sample_valid = true,
     };

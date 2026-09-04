@@ -18,3 +18,8 @@ Not included: SOGI-PLL, Park, state machine, BKIN (C–F).
 # C: SOGI-PLL lock gate
 python3 simulation/pll_compare.py
 ```
+
+```bash
+# D: Park + Iq=0
+python3 simulation/park_compare.py
+```

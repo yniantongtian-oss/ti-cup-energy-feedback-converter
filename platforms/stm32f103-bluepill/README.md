@@ -83,3 +83,10 @@
 - 同步源：**SOGI-PLL 锁植物侧 U1**（注入采样）。禁止开环斜坡 / RAMPGEN 当角度源。
 - `converter_runtime` 在每次电流环节拍更新 PLL；`pll.locked==false` 时 `duty=0` 且 `pwm_released=false`。
 - 平台 ISR 再次检查 `pwm_released` 后才写 CCR。
+
+
+## Park / Iq=0（步骤 D）
+
+- 电流 SOGI 出 `i_beta`，与 PLL `theta` 做 Park。
+- `Id_ref` = 电流给定（斜率限制后），`Iq_ref = 0`。
+- 双 PI → 反 Park → `u_alpha`，再 `(u_alpha+U1)/Vbus`。不堆谐波 PR。

@@ -39,4 +39,8 @@ if(BUILD_TESTING)
     add_executable(sogi_pll_tests tests/test_sogi_pll.c)
     target_link_libraries(sogi_pll_tests PRIVATE converter_core ${PLATFORM_MATH_LIBRARY})
     add_test(NAME sogi_pll_tests COMMAND sogi_pll_tests)
+
+    add_executable(park_iq0_tests tests/test_park_iq0.c)
+    target_link_libraries(park_iq0_tests PRIVATE converter_core ${PLATFORM_MATH_LIBRARY})
+    add_test(NAME park_iq0_tests COMMAND park_iq0_tests)
 endif()
