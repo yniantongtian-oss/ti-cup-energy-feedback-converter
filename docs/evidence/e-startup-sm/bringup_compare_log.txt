@@ -1,0 +1,6 @@
+step E bring-up sequence
+modes_seen=['OPEN_LOOP', 'CURRENT_DC', 'OUTER_V']
+bus_start=12.0 bus_target=24.0 ramp=8.0 V/s
+final bus_cmd=24.0000 final mode=OUTER_V
+OPEN_LOOP → CURRENT_DC (DC Id) → OUTER_V; bus slow ramp
+F (BKIN) not included

@@ -90,3 +90,12 @@
 - 电流 SOGI 出 `i_beta`，与 PLL `theta` 做 Park。
 - `Id_ref` = 电流给定（斜率限制后），`Iq_ref = 0`。
 - 双 PI → 反 Park → `u_alpha`，再 `(u_alpha+U1)/Vbus`。不堆谐波 PR。
+
+
+## 上电顺序（步骤 E）
+
+1. `OPEN_LOOP`：小占空比核对调制/采样；需 SOGI-PLL 已锁。
+2. `CURRENT_DC`：只合电流环，Id 直流给定。
+3. `OUTER_V`：外电压环开，Id_ref 由外环 PI 给出。
+4. `bus_cmd` 从 `bus_start_v` 按 `bus_ramp_v_per_s` 慢抬到 `bus_target_v`（软件给定；实际母线电源仍须人工/电源限流配合）。
+5. 1 ms 调 `converter_runtime_bringup_1khz`；F（BKIN）仍未做。

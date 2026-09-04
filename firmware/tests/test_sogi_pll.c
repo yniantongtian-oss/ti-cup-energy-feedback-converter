@@ -51,7 +51,11 @@ static void test_runtime_gates_pwm_until_lock(void) {
     float duty_while_unlocked = 0.0f;
     float duty_while_locked = 0.0f;
 
-    converter_runtime_init(&runtime, NULL, NULL);
+    {
+        converter_runtime_config_t rc = converter_runtime_default_config();
+        rc.bringup_enable = false; /* A–D layer tests; E sequenced separately */
+        converter_runtime_init(&runtime, NULL, &rc);
+    }
     runtime.pll_config.lock_hold_samples = 80u;
     runtime.pll_config.f0_hz = 100.0f;
     converter_runtime_set_reference(&runtime, 1.0f, 0u);
@@ -94,6 +98,7 @@ static void test_gate_disable_allows_duty_without_lock(void) {
     converter_runtime_config_t rcfg = converter_runtime_default_config();
     converter_raw_sample_t raw;
     rcfg.pll_gate_pwm = false;
+    rcfg.bringup_enable = false;
     converter_runtime_init(&runtime, NULL, &rcfg);
     converter_runtime_set_reference(&runtime, 1.0f, 0u);
     converter_runtime_arm(&runtime, 0u);

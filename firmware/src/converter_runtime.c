@@ -70,6 +70,7 @@ converter_runtime_config_t converter_runtime_default_config(void) {
     config.command_timeout_ms = 500u;
     config.adc_full_scale = 4095u;
     config.pll_gate_pwm = true;
+    config.bringup_enable = true;
     return config;
 }
 
@@ -96,6 +97,7 @@ void converter_runtime_init(converter_runtime_t *runtime,
     converter_init(&runtime->controller);
     runtime->pll_config = sogi_pll_default_config();
     sogi_pll_init(&runtime->pll, &runtime->pll_config);
+    bringup_init(&runtime->bringup, NULL);
     runtime->measurement.input_current_a = 0.0f;
     runtime->measurement.current_beta_a = 0.0f;
     runtime->measurement.bus_voltage_v = 0.0f;
@@ -126,6 +128,9 @@ void converter_runtime_arm(converter_runtime_t *runtime, uint32_t now_ms) {
     runtime->last_command_ms = now_ms;
     runtime->command_received = true;
     converter_arm(&runtime->controller);
+    if (runtime->runtime_config.bringup_enable) {
+        bringup_request_start(&runtime->bringup);
+    }
 }
 
 void converter_runtime_disarm(converter_runtime_t *runtime) {
@@ -133,6 +138,7 @@ void converter_runtime_disarm(converter_runtime_t *runtime) {
     converter_disarm(&runtime->controller);
     runtime->command_received = false;
     runtime->pwm_released = false;
+    bringup_request_stop(&runtime->bringup);
 }
 
 void converter_runtime_step(converter_runtime_t *runtime,
@@ -193,10 +199,29 @@ void converter_runtime_step(converter_runtime_t *runtime,
         runtime->measurement.theta_valid = runtime->pll.locked;
     }
 
+    /* Bring-up may own Id_ref when enabled. */
+    if (runtime->runtime_config.bringup_enable &&
+        runtime->bringup.current_enable &&
+        !runtime->bringup.force_open_loop) {
+        converter_set_current_reference(&runtime->controller, runtime->bringup.id_ref_a);
+    }
+
     converter_step(&runtime->controller,
                    &runtime->control_config,
                    &runtime->measurement,
                    dt_s);
+
+    if (runtime->runtime_config.bringup_enable) {
+        if (runtime->bringup.force_open_loop) {
+            runtime->controller.duty_command = runtime->bringup.open_loop_duty_cmd;
+        } else if (!runtime->bringup.current_enable) {
+            runtime->controller.duty_command = 0.0f;
+            runtime->controller.voltage_command = 0.0f;
+        }
+        if (runtime->bringup.mode == BRINGUP_FAULT) {
+            runtime->controller.duty_command = 0.0f;
+        }
+    }
 
     if (runtime->runtime_config.pll_gate_pwm) {
         runtime->pwm_released = runtime->pll.locked;
@@ -207,6 +232,27 @@ void converter_runtime_step(converter_runtime_t *runtime,
     } else {
         runtime->pwm_released = true;
     }
+}
+
+void converter_runtime_bringup_1khz(converter_runtime_t *runtime, uint32_t dt_ms) {
+    bool hw_ok;
+    if (runtime == NULL) return;
+    if (!runtime->runtime_config.bringup_enable) return;
+    hw_ok = runtime->controller.faults == CONVERTER_FAULT_NONE;
+    bringup_step_1khz(&runtime->bringup,
+                      runtime->measurement.bus_voltage_v,
+                      runtime->pll.amplitude_v,
+                      runtime->pll.locked,
+                      hw_ok,
+                      dt_ms);
+    if (runtime->bringup.mode == BRINGUP_FAULT) {
+        converter_disarm(&runtime->controller);
+        runtime->pwm_released = false;
+    }
+}
+
+bringup_mode_t converter_runtime_bringup_mode(const converter_runtime_t *runtime) {
+    return runtime != NULL ? runtime->bringup.mode : BRINGUP_IDLE;
 }
 
 bool converter_runtime_clear_faults(converter_runtime_t *runtime,

@@ -23,3 +23,8 @@ python3 simulation/pll_compare.py
 # D: Park + Iq=0
 python3 simulation/park_compare.py
 ```
+
+```bash
+# E: bring-up SM
+python3 simulation/bringup_compare.py
+```

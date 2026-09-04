@@ -48,7 +48,8 @@ This document describes the overall software and hardware architecture of the en
 - Outer voltage loop — **not in this step**
 - Sync: **SOGI-PLL on U1**; PWM gated until lock; **no RAMPGEN**.
 - Park + **Iq=0** (dual PI on Id/Iq); **no harmonic PR**.
-- State machine, TIM1 BKIN — **later steps (E–F), not claimed done**
+- Bring-up SM: OPEN_LOOP → CURRENT_DC → OUTER_V; bus cmd slow ramp.
+- TIM1 BKIN — **step F, not claimed done**
 
 ## Safety & Protection | 安全与保护
 

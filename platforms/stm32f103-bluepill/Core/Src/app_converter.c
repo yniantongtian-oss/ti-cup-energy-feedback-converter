@@ -110,11 +110,11 @@ void AppConverter_CurrentLoopFromInjected(uint16_t current_adc,
 }
 
 void AppConverter_1msTask(uint32_t now_ms) {
-    /* Slow path only: cache bus/temp for the next injected ISR. No PI, no PWM write. */
+    /* Slow path: bus/temp cache + bring-up SM (open-loop→current DC→outer V) + bus ramp. */
     g_slow_bus_adc = g_adc_dma[0];
     g_slow_temp_adc = g_adc_dma[1];
+    converter_runtime_bringup_1khz(&g_runtime, 1u);
     (void)now_ms;
-    /* Command timeout still evaluated inside the 20 kHz step using now_ms. */
 }
 
 void AppConverter_SetCurrentMilliamp(int16_t current_ma, uint32_t now_ms) {
