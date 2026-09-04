@@ -28,3 +28,8 @@ python3 simulation/park_compare.py
 # E: bring-up SM
 python3 simulation/bringup_compare.py
 ```
+
+```bash
+# F: BKIN / MOE
+python3 simulation/bkin_compare.py
+```

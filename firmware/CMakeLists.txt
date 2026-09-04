@@ -10,6 +10,7 @@ add_library(converter_core
     src/converter_runtime.c
     src/sogi_pll.c
     src/bringup.c
+    src/tim1_bkin.c
 )
 target_include_directories(converter_core PUBLIC include)
 if(MSVC)
@@ -48,4 +49,8 @@ if(BUILD_TESTING)
     add_executable(bringup_tests tests/test_bringup.c)
     target_link_libraries(bringup_tests PRIVATE converter_core ${PLATFORM_MATH_LIBRARY})
     add_test(NAME bringup_tests COMMAND bringup_tests)
+
+    add_executable(bkin_tests tests/test_tim1_bkin.c)
+    target_link_libraries(bkin_tests PRIVATE converter_core ${PLATFORM_MATH_LIBRARY})
+    add_test(NAME bkin_tests COMMAND bkin_tests)
 endif()

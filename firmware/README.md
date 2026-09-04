@@ -38,3 +38,5 @@ Windows 使用 Visual Studio 生成器时，演示程序通常位于 `build/Rele
 默认参数仅用于测试代码行为，不是经过验证的功率级参数。首次移植只能在隔离、限流、低压电源和可快速断电的条件下进行。
 
 7. **Park + Iq=0**：用 PLL 角做 dq；Id 跟踪给定，Iq 给定为 0；内环仍是 PI，不堆 3/5/7 PR。
+
+8. **TIM1 BKIN（PA6）**：低有效、AOE=0；过流走比较器/nFAULT→BKIN，MOE 先于 ISR。PB12 不替代。

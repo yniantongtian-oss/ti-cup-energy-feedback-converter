@@ -49,7 +49,7 @@ This document describes the overall software and hardware architecture of the en
 - Sync: **SOGI-PLL on U1**; PWM gated until lock; **no RAMPGEN**.
 - Park + **Iq=0** (dual PI on Id/Iq); **no harmonic PR**.
 - Bring-up SM: OPEN_LOOP → CURRENT_DC → OUTER_V; bus cmd slow ramp.
-- TIM1 BKIN — **step F, not claimed done**
+- TIM1 BKIN on **PA6**: BKE=1, BKP=0, AOE=0; MOE cleared on break before ISR.
 
 ## Safety & Protection | 安全与保护
 

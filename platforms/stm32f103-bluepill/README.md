@@ -75,7 +75,7 @@
 
 ## 已锁定、本步未实现的保护脚（F）
 
-过流硬件掐门预定 **PA6 = TIM1_BKIN**，低有效，BKP=0，AOE=0。PB12 仍是 GPIO 故障输入，**不能替代 BKIN**。比较器/nFAULT 器件未上板时固件仍按 PA6 预留，不改板。本 PR 只做 A（U1 前馈），不配 BDTR。
+过流硬件掐门预定 **PA6 = TIM1_BKIN**，低有效，BKP=0，AOE=0。PB12 仍是 GPIO 故障输入，**不能替代 BKIN**。比较器/nFAULT 器件未上板时固件仍按 PA6 预留，不改板。步骤 F 已配：见下方 TIM1 BKIN。
 
 
 ## 同步（步骤 C）
@@ -98,4 +98,19 @@
 2. `CURRENT_DC`：只合电流环，Id 直流给定。
 3. `OUTER_V`：外电压环开，Id_ref 由外环 PI 给出。
 4. `bus_cmd` 从 `bus_start_v` 按 `bus_ramp_v_per_s` 慢抬到 `bus_target_v`（软件给定；实际母线电源仍须人工/电源限流配合）。
-5. 1 ms 调 `converter_runtime_bringup_1khz`；F（BKIN）仍未做。
+5. 1 ms 调 `converter_runtime_bringup_1khz`。
+
+
+## TIM1 BKIN（步骤 F）
+
+| 项 | 值 |
+|---|---|
+| 脚 | **PA6** TIM1_BKIN |
+| 极性 | 低有效 → BDTR.BKP=**0** |
+| 自动输出 | **AOE=0**（故障后禁止硬件自动再开 MOE） |
+| 使能 | BKE=1 |
+| 行为 | Break 硬件先清 **MOE**，再进 `AppTim1Bkin_OnBreakIrq` 锁存 |
+| 清故障 | 仅在 PLL 再锁 + 输入安全后 `TryClearAndArmMoe` **显式**置 MOE |
+| 非替代 | **PB12** 仍是 GPIO 故障输入，**不能**当 BKIN |
+
+比较器/nFAULT 未上板时仍按 PA6 写固件；不改板、不下单。软件清 trip 替代不了硬件掐门。

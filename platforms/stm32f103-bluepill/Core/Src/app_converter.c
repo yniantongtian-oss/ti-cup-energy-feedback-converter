@@ -1,5 +1,6 @@
 #include "app_converter.h"
 
+#include "app_tim1_bkin.h"
 #include "main.h"
 
 #include <math.h>
@@ -86,6 +87,8 @@ void AppConverter_Init(void) {
     g_current_loop_count = 0u;
     force_pwm_off();
 
+    AppTim1Bkin_Init(); /* PA6 BKIN, BKE=1, BKP=0, AOE=0; MOE starts clear */
+
     (void)HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
     (void)HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
     force_pwm_off();
@@ -101,7 +104,8 @@ void AppConverter_CurrentLoopFromInjected(uint16_t current_adc,
     converter_raw_sample_t raw = make_raw(current_adc, plant_adc_u1);
     converter_runtime_step(&g_runtime, &raw, now_ms, APP_CURRENT_LOOP_DT_S);
     /* Step C: SOGI-PLL must lock U1 before PWM; runtime zeros duty if unlocked. */
-    if (!g_runtime.pwm_released) {
+    /* C: PLL gate; F: MOE/BKIN trip must be clear before CCR update. */
+    if (!g_runtime.pwm_released || !AppTim1Bkin_OutputsAllowed()) {
         force_pwm_off();
     } else {
         apply_signed_duty(g_runtime.controller.duty_command);
@@ -137,7 +141,9 @@ bool AppConverter_ClearFaults(void) {
     if (!hardware_inputs_safe()) return false;
     raw = make_raw(0u, 2048u);
     raw.current_adc = 2048u;
-    return converter_runtime_clear_faults(&g_runtime, &raw);
+    if (!converter_runtime_clear_faults(&g_runtime, &raw)) return false;
+    /* Software clear after PLL re-lock; does not replace PA6 comparator/nFAULT. */
+    return AppTim1Bkin_TryClearAndArmMoe(converter_runtime_pll_locked(&g_runtime));
 }
 
 void AppConverter_EmergencyStop(void) {
