@@ -58,9 +58,9 @@ python3 simulation/simulate.py --compare
 | FF ON CSV | `/workspace/audit-tiday6e/simulation/output_ff_on.csv`（副本 `.../evidence/a-u1-feedforward/output_ff_on.csv`） |
 | FF OFF CSV | `/workspace/audit-tiday6e/simulation/output_ff_off.csv` |
 | 对比 SVG | `/workspace/audit-tiday6e/simulation/ff_compare.svg` |
-| 对比日志 | `/workspace/audit-tiday6e/simulation/ff_compare.log` |
+| 对比日志 | `/workspace/audit-tiday6e/simulation/ff_compare_log.txt` |
 
-`ff_compare.log` 摘要：
+`ff_compare_log.txt` 摘要：
 
 ```
 FF ON  Irms_err=0.000001 A  final=1.0000 A
@@ -91,11 +91,11 @@ OFF/ON rms ratio≈2e6
 | OFF：duty=u_i/Vbus | 过 | 同测试 → duty=0.1 |
 | 低母线 duty=0 | 过 | `test_low_bus_forces_zero_duty` |
 | 单元测试全绿 | 过 | `field-log-2026-09-05.txt` |
-| FF ON 优于 OFF | 过 | `ff_compare.log`：OFF RMS ≫ ON |
+| FF ON 优于 OFF | 过 | `ff_compare_log.txt`：OFF RMS ≫ ON |
 | 波形可打开 | 过 | `ff_compare.svg`（绿=ON，红=OFF，灰=ref） |
 | 未做 B–F | 声明 | 无 SOGI/PLL/Park/BKIN/20 kHz ISR；F 脚 PA6 只写进平台 README 预留 |
 
-**第三人最小重做**：clone/检出含 A 的分支 → 跑上面两段命令 → 对照 `ff_compare.log` 数量级（ON≪OFF）与 SVG。
+**第三人最小重做**：clone/检出含 A 的分支 → 跑上面两段命令 → 对照 `ff_compare_log.txt` 数量级（ON≪OFF）与 SVG。
 
 ## 未完成（不假装过）
 
