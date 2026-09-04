@@ -8,6 +8,7 @@ set(CMAKE_C_EXTENSIONS OFF)
 add_library(converter_core
     src/converter.c
     src/converter_runtime.c
+    src/sogi_pll.c
 )
 target_include_directories(converter_core PUBLIC include)
 if(MSVC)
@@ -34,4 +35,8 @@ if(BUILD_TESTING)
     add_executable(converter_timing_tests tests/test_timing_rate.c)
     target_link_libraries(converter_timing_tests PRIVATE converter_core ${PLATFORM_MATH_LIBRARY})
     add_test(NAME converter_timing_tests COMMAND converter_timing_tests)
+
+    add_executable(sogi_pll_tests tests/test_sogi_pll.c)
+    target_link_libraries(sogi_pll_tests PRIVATE converter_core ${PLATFORM_MATH_LIBRARY})
+    add_test(NAME sogi_pll_tests COMMAND sogi_pll_tests)
 endif()

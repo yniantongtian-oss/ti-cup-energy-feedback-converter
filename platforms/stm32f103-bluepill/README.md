@@ -76,3 +76,10 @@
 ## 已锁定、本步未实现的保护脚（F）
 
 过流硬件掐门预定 **PA6 = TIM1_BKIN**，低有效，BKP=0，AOE=0。PB12 仍是 GPIO 故障输入，**不能替代 BKIN**。比较器/nFAULT 器件未上板时固件仍按 PA6 预留，不改板。本 PR 只做 A（U1 前馈），不配 BDTR。
+
+
+## 同步（步骤 C）
+
+- 同步源：**SOGI-PLL 锁植物侧 U1**（注入采样）。禁止开环斜坡 / RAMPGEN 当角度源。
+- `converter_runtime` 在每次电流环节拍更新 PLL；`pll.locked==false` 时 `duty=0` 且 `pwm_released=false`。
+- 平台 ISR 再次检查 `pwm_released` 后才写 CCR。

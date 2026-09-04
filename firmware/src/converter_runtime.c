@@ -66,6 +66,7 @@ converter_runtime_config_t converter_runtime_default_config(void) {
     config.filter_alpha = 0.2f;
     config.command_timeout_ms = 500u;
     config.adc_full_scale = 4095u;
+    config.pll_gate_pwm = true;
     return config;
 }
 
@@ -90,6 +91,8 @@ void converter_runtime_init(converter_runtime_t *runtime,
     runtime->control_config = control_config != NULL ? *control_config : converter_default_config();
     runtime->runtime_config = runtime_config != NULL ? *runtime_config : converter_runtime_default_config();
     converter_init(&runtime->controller);
+    runtime->pll_config = sogi_pll_default_config();
+    sogi_pll_init(&runtime->pll, &runtime->pll_config);
     runtime->measurement.input_current_a = 0.0f;
     runtime->measurement.bus_voltage_v = 0.0f;
     runtime->measurement.plant_voltage_v = 0.0f;
@@ -98,6 +101,7 @@ void converter_runtime_init(converter_runtime_t *runtime,
     runtime->last_command_ms = 0u;
     runtime->command_received = false;
     runtime->filter_initialized = false;
+    runtime->pwm_released = false;
 }
 
 void converter_runtime_set_reference(converter_runtime_t *runtime,
@@ -120,6 +124,7 @@ void converter_runtime_disarm(converter_runtime_t *runtime) {
     if (runtime == NULL) return;
     converter_disarm(&runtime->controller);
     runtime->command_received = false;
+    runtime->pwm_released = false;
 }
 
 void converter_runtime_step(converter_runtime_t *runtime,
@@ -130,8 +135,10 @@ void converter_runtime_step(converter_runtime_t *runtime,
     if (runtime == NULL) return;
 
     if (!converter_config_is_valid(&runtime->control_config) ||
-        !converter_runtime_config_is_valid(&runtime->runtime_config)) {
+        !converter_runtime_config_is_valid(&runtime->runtime_config) ||
+        !sogi_pll_config_is_valid(&runtime->pll_config)) {
         converter_disarm(&runtime->controller);
+        runtime->pwm_released = false;
         return;
     }
 
@@ -140,6 +147,7 @@ void converter_runtime_step(converter_runtime_t *runtime,
         converter_set_current_reference(&runtime->controller, 0.0f);
         converter_disarm(&runtime->controller);
         runtime->command_received = false;
+        runtime->pwm_released = false;
     }
 
     if (!raw_sample_is_valid(runtime, raw)) {
@@ -149,14 +157,31 @@ void converter_runtime_step(converter_runtime_t *runtime,
         invalid.temperature_c = 0.0f;
         invalid.sample_valid = false;
         converter_step(&runtime->controller, &runtime->control_config, &invalid, dt_s);
+        runtime->pwm_released = false;
+        runtime->controller.duty_command = 0.0f;
         return;
     }
 
     runtime->measurement = convert_sample(runtime, raw);
+
+    /* Sync on U1 only — never a software ramp angle. */
+    sogi_pll_step(&runtime->pll, &runtime->pll_config,
+                  runtime->measurement.plant_voltage_v, dt_s);
+
     converter_step(&runtime->controller,
                    &runtime->control_config,
                    &runtime->measurement,
                    dt_s);
+
+    if (runtime->runtime_config.pll_gate_pwm) {
+        runtime->pwm_released = runtime->pll.locked;
+        if (!runtime->pll.locked) {
+            runtime->controller.duty_command = 0.0f;
+            runtime->controller.voltage_command = 0.0f;
+        }
+    } else {
+        runtime->pwm_released = true;
+    }
 }
 
 bool converter_runtime_clear_faults(converter_runtime_t *runtime,
@@ -166,4 +191,12 @@ bool converter_runtime_clear_faults(converter_runtime_t *runtime,
     return converter_clear_faults(&runtime->controller,
                                   &runtime->control_config,
                                   &runtime->measurement);
+}
+
+bool converter_runtime_pll_locked(const converter_runtime_t *runtime) {
+    return runtime != NULL && runtime->pll.locked;
+}
+
+float converter_runtime_pll_theta_rad(const converter_runtime_t *runtime) {
+    return runtime != NULL ? runtime->pll.theta_rad : 0.0f;
 }

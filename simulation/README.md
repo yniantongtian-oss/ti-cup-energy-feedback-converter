@@ -13,3 +13,8 @@ python3 simulation/simulate.py --rate-compare
 B writes `output_rate_20khz.csv`, `output_rate_1khz.csv`, `rate_compare.svg`, `rate_compare_log.txt`.
 
 Not included: SOGI-PLL, Park, state machine, BKIN (C–F).
+
+```bash
+# C: SOGI-PLL lock gate
+python3 simulation/pll_compare.py
+```

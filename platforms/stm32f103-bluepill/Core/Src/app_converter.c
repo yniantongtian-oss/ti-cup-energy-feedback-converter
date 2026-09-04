@@ -100,7 +100,12 @@ void AppConverter_CurrentLoopFromInjected(uint16_t current_adc,
                                           uint32_t now_ms) {
     converter_raw_sample_t raw = make_raw(current_adc, plant_adc_u1);
     converter_runtime_step(&g_runtime, &raw, now_ms, APP_CURRENT_LOOP_DT_S);
-    apply_signed_duty(g_runtime.controller.duty_command);
+    /* Step C: SOGI-PLL must lock U1 before PWM; runtime zeros duty if unlocked. */
+    if (!g_runtime.pwm_released) {
+        force_pwm_off();
+    } else {
+        apply_signed_duty(g_runtime.controller.duty_command);
+    }
     g_current_loop_count++;
 }
 

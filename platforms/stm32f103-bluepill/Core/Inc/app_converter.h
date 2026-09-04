@@ -18,7 +18,7 @@ extern "C" {
 
 void AppConverter_Init(void);
 
-/* Call from ADC injected conversion complete (TIM1 OCxREF trigger). Runs PI + PWM. */
+/* Injected ISR: SOGI-PLL on U1, then PI; PWM only if PLL locked (no RAMPGEN). */
 void AppConverter_CurrentLoopFromInjected(uint16_t current_adc,
                                           uint16_t plant_adc_u1,
                                           uint32_t now_ms);

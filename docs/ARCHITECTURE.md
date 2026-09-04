@@ -46,7 +46,8 @@ This document describes the overall software and hardware architecture of the en
 - Duty: `(u_i + U1) / Vbus`. Feedforward default ON. U1 is plant-side voltage (PA3/ADC1_IN3).
 - Current loop rate: **~20 kHz** (TIM1 center-aligned + injected ADC). 1 kHz = slow path only.
 - Outer voltage loop — **not in this step**
-- Sync (SOGI-PLL), Park, state machine, TIM1 BKIN — **later steps (C–F), not claimed done**
+- Sync: **SOGI-PLL on U1**; PWM gated until lock; **no RAMPGEN**.
+- Park, state machine, TIM1 BKIN — **later steps (D–F), not claimed done**
 
 ## Safety & Protection | 安全与保护
 
