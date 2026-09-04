@@ -25,21 +25,25 @@ typedef enum {
 } converter_fault_t;
 
 typedef struct {
-    float kp;
-    float ki;
+    float kp;                       /* V/A, demo value, not a 20 kHz tune */
+    float ki;                       /* V/(A*s) */
     float current_limit_a;
     float current_trip_a;
     float bus_voltage_min_v;
     float bus_voltage_max_v;
     float temperature_trip_c;
     float duty_limit;
+    float voltage_command_limit;    /* |u_i| clamp, volts */
     float current_slew_a_per_s;
-    float integrator_limit;
+    float integrator_limit;         /* volts */
+    float mod_bus_min_v;            /* refuse to divide if Vbus below this */
+    bool feedforward_enable;        /* default ON: duty = (u_i + U1) / Vbus */
 } converter_config_t;
 
 typedef struct {
     float input_current_a;
     float bus_voltage_v;
+    float plant_voltage_v;          /* U1, plant-side voltage */
     float temperature_c;
     bool sample_valid;
 } converter_measurement_t;
@@ -51,7 +55,9 @@ typedef struct {
     float requested_current_a;
     float ramped_current_a;
     float integrator;
-    float duty_command;
+    float voltage_command;          /* current-loop output u_i, volts */
+    float duty_command;             /* (u_i + U1) / Vbus, signed */
+    bool feedforward_active;
 } converter_t;
 
 converter_config_t converter_default_config(void);
