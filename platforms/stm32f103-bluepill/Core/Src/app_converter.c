@@ -8,7 +8,8 @@ extern ADC_HandleTypeDef hadc1;
 extern TIM_HandleTypeDef htim1;
 
 static converter_runtime_t g_runtime;
-static volatile uint16_t g_adc_dma[3] = {0u, 0u, 0u};
+/* IN0 current, IN1 bus, IN2 temp, IN3 U1 (PA3). Order must match CubeMX scan. */
+static volatile uint16_t g_adc_dma[4] = {0u, 0u, 0u, 0u};
 static bool g_emergency_latched = false;
 
 static bool hardware_inputs_safe(void) {
@@ -54,6 +55,7 @@ static converter_raw_sample_t current_raw_sample(void) {
     raw.current_adc = g_adc_dma[0];
     raw.bus_adc = g_adc_dma[1];
     raw.temperature_adc = g_adc_dma[2];
+    raw.plant_adc = g_adc_dma[3]; /* PA3 ADC1_IN3 = U1 */
     raw.sample_valid = true;
     raw.hardware_fault = !hardware_inputs_safe();
     return raw;
@@ -68,9 +70,12 @@ void AppConverter_Init(void) {
     runtime.current_offset_a = -2.048f;
     runtime.bus_gain_v_per_count = 0.01f;
     runtime.bus_offset_v = 0.0f;
+    runtime.plant_gain_v_per_count = 0.01f;
+    runtime.plant_offset_v = -20.48f;
     runtime.temperature_gain_c_per_count = 0.1f;
     runtime.temperature_offset_c = -50.0f;
     runtime.command_timeout_ms = 500u;
+    /* Feedforward defaults ON in converter_default_config: duty = (u_i + U1)/Vbus. */
 
     converter_runtime_init(&g_runtime, &control, &runtime);
     g_emergency_latched = false;
@@ -79,7 +84,7 @@ void AppConverter_Init(void) {
     (void)HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
     (void)HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
     force_pwm_off();
-    (void)HAL_ADC_Start_DMA(&hadc1, (uint32_t *)g_adc_dma, 3u);
+    (void)HAL_ADC_Start_DMA(&hadc1, (uint32_t *)g_adc_dma, 4u);
 }
 
 void AppConverter_1msTask(uint32_t now_ms) {

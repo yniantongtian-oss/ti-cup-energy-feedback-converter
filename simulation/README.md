@@ -1,16 +1,18 @@
 # Simulation | 仿真
 
-This directory will contain simulation models and scripts for the energy feedback converter.
+Averaged current-loop host model for **step A** (U1 feedforward). Not a switching model.
 
-## Planned Contents
+```bash
+python3 simulation/simulate.py --compare
+```
 
-- MATLAB/Simulink models for power stage and control loops
-- PSIM simulation files
-- Python scripts for parameter optimization and waveform analysis
-- Test vectors for different operating modes
+Writes:
 
-## Current Status
+- `simulation/output_ff_on.csv` / `output_ff_off.csv`
+- `simulation/ff_compare.svg`
+- `simulation/ff_compare.log`
 
-Simulation models are in early planning stage.
+Plant: `L di/dt = duty*Vbus - U1 - R*i` with a 100 Hz U1 disturbance.
+ON uses `duty = (u_i + U1)/Vbus`; OFF uses `duty = u_i/Vbus`.
 
-> Contributions of simulation models are very welcome!
+B–F (20 kHz ISR, SOGI-PLL, Park, state machine, BKIN) are not in this sim.
