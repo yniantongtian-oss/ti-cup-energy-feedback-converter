@@ -47,9 +47,9 @@ Windows 多配置生成器的演示程序通常位于 `build/Release/converter_d
 
 该端口面向此前常见的 Blue Pill + MAX485 方案，提供：
 
-- ADC1 四通道 DMA：电流、母线、温度、U1(PA3)
-- TIM1 两路抽象方向 PWM，软件保证不同时输出
-- 1 kHz 控制调度
+- ADC1：规则组 DMA=母线+温度；注入组=电流(IN0)+U1(PA3)，TIM1 OCxREF ~20 kHz
+- TIM1 两路抽象方向 PWM，软件保证不同时输出；电流环在注入完成回调
+- 1 kHz 只给慢路径（安全/Modbus），不是电流环采样率
 - 急停和硬件故障关断接口
 - Modbus 控制层需要调用的 Arm、Disarm、设定值和清故障 API
 

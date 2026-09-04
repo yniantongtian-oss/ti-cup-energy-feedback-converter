@@ -1,18 +1,15 @@
 # Simulation | 仿真
 
-Averaged current-loop host model for **step A** (U1 feedforward). Not a switching model.
+Averaged host model for steps **A** (feedforward) and **B** (control rate).
 
 ```bash
+# A: FF ON vs OFF @ 20 kHz control
 python3 simulation/simulate.py --compare
+
+# B: 20 kHz vs 1 kHz control (FF ON, U1 held between updates)
+python3 simulation/simulate.py --rate-compare
 ```
 
-Writes:
+B writes `output_rate_20khz.csv`, `output_rate_1khz.csv`, `rate_compare.svg`, `rate_compare_log.txt`.
 
-- `simulation/output_ff_on.csv` / `output_ff_off.csv`
-- `simulation/ff_compare.svg`
-- `simulation/ff_compare_log.txt`
-
-Plant: `L di/dt = duty*Vbus - U1 - R*i` with a 100 Hz U1 disturbance.
-ON uses `duty = (u_i + U1)/Vbus`; OFF uses `duty = u_i/Vbus`.
-
-B–F (20 kHz ISR, SOGI-PLL, Park, state machine, BKIN) are not in this sim.
+Not included: SOGI-PLL, Park, state machine, BKIN (C–F).
