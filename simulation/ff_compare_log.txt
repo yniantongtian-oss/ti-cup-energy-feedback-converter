@@ -1,0 +1,6 @@
+step A feedforward comparison
+Vbus=24.0 V  U1=8.0 Vpk @ 100.0 Hz  Iref=1.0 A
+FF ON  Irms_err=0.000001 A  final=1.0000 A
+FF OFF Irms_err=2.163095 A  final=1.7282 A
+OFF/ON rms ratio=2035927.21 ( >1 means ON tracks better )
+duty = (u_i + U1)/Vbus when ON; duty = u_i/Vbus when OFF

@@ -30,4 +30,8 @@ if(BUILD_TESTING)
     add_executable(converter_runtime_tests tests/test_runtime.c)
     target_link_libraries(converter_runtime_tests PRIVATE converter_core ${PLATFORM_MATH_LIBRARY})
     add_test(NAME converter_runtime_tests COMMAND converter_runtime_tests)
+
+    add_executable(converter_timing_tests tests/test_timing_rate.c)
+    target_link_libraries(converter_timing_tests PRIVATE converter_core ${PLATFORM_MATH_LIBRARY})
+    add_test(NAME converter_timing_tests COMMAND converter_timing_tests)
 endif()

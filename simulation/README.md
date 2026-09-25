@@ -1,16 +1,15 @@
 # Simulation | 仿真
 
-This directory will contain simulation models and scripts for the energy feedback converter.
+Averaged host model for steps **A** (feedforward) and **B** (control rate).
 
-## Planned Contents
+```bash
+# A: FF ON vs OFF @ 20 kHz control
+python3 simulation/simulate.py --compare
 
-- MATLAB/Simulink models for power stage and control loops
-- PSIM simulation files
-- Python scripts for parameter optimization and waveform analysis
-- Test vectors for different operating modes
+# B: 20 kHz vs 1 kHz control (FF ON, U1 held between updates)
+python3 simulation/simulate.py --rate-compare
+```
 
-## Current Status
+B writes `output_rate_20khz.csv`, `output_rate_1khz.csv`, `rate_compare.svg`, `rate_compare_log.txt`.
 
-Simulation models are in early planning stage.
-
-> Contributions of simulation models are very welcome!
+Not included: SOGI-PLL, Park, state machine, BKIN (C–F).
