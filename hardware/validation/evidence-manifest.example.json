@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0.0",
+  "test_id": "replace-with-real-test-id",
+  "status": "template-only",
+  "board_revision": null,
+  "firmware_commit": null,
+  "date_utc": null,
+  "instruments": [],
+  "conditions": {
+    "supply_voltage_V": null,
+    "current_limit_A": null,
+    "load": null,
+    "ambient_temperature_C": null
+  },
+  "artifacts": [],
+  "acceptance_criteria": [],
+  "result": null,
+  "notes": "Template only. Do not mark validated until real measurements and checksums are recorded."
+}
