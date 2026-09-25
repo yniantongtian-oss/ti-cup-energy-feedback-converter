@@ -8,6 +8,7 @@ set(CMAKE_C_EXTENSIONS OFF)
 add_library(converter_core
     src/converter.c
     src/converter_runtime.c
+    src/converter_crc.c
 )
 target_include_directories(converter_core PUBLIC include)
 if(MSVC)
@@ -30,4 +31,8 @@ if(BUILD_TESTING)
     add_executable(converter_runtime_tests tests/test_runtime.c)
     target_link_libraries(converter_runtime_tests PRIVATE converter_core ${PLATFORM_MATH_LIBRARY})
     add_test(NAME converter_runtime_tests COMMAND converter_runtime_tests)
+
+    add_executable(converter_crc_tests tests/test_crc.c)
+    target_link_libraries(converter_crc_tests PRIVATE converter_core ${PLATFORM_MATH_LIBRARY})
+    add_test(NAME converter_crc_tests COMMAND converter_crc_tests)
 endif()
