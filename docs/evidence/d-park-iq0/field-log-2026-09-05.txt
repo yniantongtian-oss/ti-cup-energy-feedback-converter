@@ -1,0 +1,18 @@
+=== 2026-09-04T22:32:36Z D field log start ===
+cwd=/workspace/ti-cup-push branch=feat/d-park-iq0
+--- unit tests ---
+all converter tests passed
+all runtime tests passed
+all timing rate tests passed
+all sogi_pll tests passed
+all park iq0 tests passed
+--- park compare ---
+wrote simulation/output_park_on.csv  park=True  Iq_rms=0.0097 A  final_i_alpha=0.989
+wrote simulation/output_park_off.csv  park=False  Iq_rms=1.2247 A  final_i_alpha=1.000
+step D Park+Iq=0 comparison
+U1=8 Vpk @ 100 Hz, Vbus=24, Id_ref=1 A, dual PI, no PR
+Park ON  Iq_rms=0.009715 A
+Park OFF Iq_rms=1.224738 A
+OFF/ON Iq_rms ratio=126.06 ( >1 means Park+Iq=0 better )
+
+=== field log end ===

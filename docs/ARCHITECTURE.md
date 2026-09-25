@@ -42,10 +42,14 @@ This document describes the overall software and hardware architecture of the en
 
 ## Key Control Loops | 关键控制循环
 
-- Inner current loop (fast)
-- Outer voltage loop
-- Energy feedback / recovery logic
-- Mode switching logic (buck, boost, bidirectional)
+- Inner current loop (PI). Output is voltage `u_i`, not duty.
+- Duty: `(u_i + U1) / Vbus`. Feedforward default ON. U1 is plant-side voltage (PA3/ADC1_IN3).
+- Current loop rate: **~20 kHz** (TIM1 center-aligned + injected ADC). 1 kHz = slow path only.
+- Outer voltage loop — **not in this step**
+- Sync: **SOGI-PLL on U1**; PWM gated until lock; **no RAMPGEN**.
+- Park + **Iq=0** (dual PI on Id/Iq); **no harmonic PR**.
+- Bring-up SM: OPEN_LOOP → CURRENT_DC → OUTER_V; bus cmd slow ramp.
+- TIM1 BKIN — **step F, not claimed done**
 
 ## Safety & Protection | 安全与保护
 
