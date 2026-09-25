@@ -2,12 +2,13 @@
 
 This document outlines the current status and future development plans for **ti-cup-energy-feedback-converter**.
 
-## Current Status (July 2026) | 当前状态
+## Current Status (September 2026) | 当前状态
 
-- Repository initialized with professional structure
-- Core project concept defined (TI Cup Topic A - Energy Feedback Converter)
-- Basic README, LICENSE, and .gitignore added
-- Actively preparing for 2026 Fujian TI Cup
+- Portable C99 control/runtime core is implemented and CI-tested on Windows, macOS and Ubuntu.
+- A STM32F103C8T6 reference adapter, ADC/DMA integration layer and Modbus register map are present.
+- Host-side simulation and software fault/watchdog/calibration logic have automated coverage.
+- The repository does **not** yet contain a manufacturable power-stage design or traceable real-hardware validation evidence.
+- Hardware validation evidence must satisfy `docs/RELEASE_ACCEPTANCE.md` before a hardware-qualified release.
 
 ## Short-term Goals (Next 1-2 months) | 短期目标
 
@@ -47,4 +48,4 @@ This project is expected to be actively maintained throughout my undergraduate s
 
 ---
 
-**Last Updated**: July 2026
+**Last Updated**: September 2026
