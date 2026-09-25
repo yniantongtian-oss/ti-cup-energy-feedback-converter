@@ -1,0 +1,17 @@
+=== 2026-09-04T22:38:00Z F field log start ===
+cwd=/workspace/ti-cup-push branch=feat/f-tim1-bkin
+all converter tests passed
+all runtime tests passed
+all timing rate tests passed
+all sogi_pll tests passed
+all park iq0 tests passed
+all bringup tests passed
+all tim1_bkin tests passed
+step F TIM1 BKIN / MOE
+PA6 TIM1_BKIN active-low (BKP=0), AOE=0, BKE=1
+at t=0.050 hardware break: MOE→0, trip latched, pwm→0
+at t=0.120 soft clear after PLL: trip cleared, MOE still 0 (AOE=0)
+at t=0.130 explicit MOE re-arm
+PB12 GPIO is not BKIN and cannot substitute
+
+=== field log end ===

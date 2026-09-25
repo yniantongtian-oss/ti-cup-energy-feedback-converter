@@ -1,0 +1,6 @@
+step F TIM1 BKIN / MOE
+PA6 TIM1_BKIN active-low (BKP=0), AOE=0, BKE=1
+at t=0.050 hardware break: MOE→0, trip latched, pwm→0
+at t=0.120 soft clear after PLL: trip cleared, MOE still 0 (AOE=0)
+at t=0.130 explicit MOE re-arm
+PB12 GPIO is not BKIN and cannot substitute
