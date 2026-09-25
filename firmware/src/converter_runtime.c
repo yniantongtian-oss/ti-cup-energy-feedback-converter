@@ -12,6 +12,7 @@ static bool raw_sample_is_valid(const converter_runtime_t *runtime,
     if (runtime == NULL || raw == NULL || !raw->sample_valid || raw->hardware_fault) return false;
     return raw->current_adc <= runtime->runtime_config.adc_full_scale &&
            raw->bus_adc <= runtime->runtime_config.adc_full_scale &&
+           raw->plant_adc <= runtime->runtime_config.adc_full_scale &&
            raw->temperature_adc <= runtime->runtime_config.adc_full_scale;
 }
 
@@ -23,9 +24,15 @@ static converter_measurement_t convert_sample(converter_runtime_t *runtime,
     converted.input_current_a = calibrated(raw->current_adc,
                                            config->current_gain_a_per_count,
                                            config->current_offset_a);
+    converted.current_beta_a = 0.0f;
+    converted.theta_rad = 0.0f;
+    converted.theta_valid = false;
     converted.bus_voltage_v = calibrated(raw->bus_adc,
                                          config->bus_gain_v_per_count,
                                          config->bus_offset_v);
+    converted.plant_voltage_v = calibrated(raw->plant_adc,
+                                           config->plant_gain_v_per_count,
+                                           config->plant_offset_v);
     converted.temperature_c = calibrated(raw->temperature_adc,
                                          config->temperature_gain_c_per_count,
                                          config->temperature_offset_c);
@@ -40,6 +47,8 @@ static converter_measurement_t convert_sample(converter_runtime_t *runtime,
             alpha * (converted.input_current_a - runtime->measurement.input_current_a);
         runtime->measurement.bus_voltage_v +=
             alpha * (converted.bus_voltage_v - runtime->measurement.bus_voltage_v);
+        runtime->measurement.plant_voltage_v +=
+            alpha * (converted.plant_voltage_v - runtime->measurement.plant_voltage_v);
         runtime->measurement.temperature_c +=
             alpha * (converted.temperature_c - runtime->measurement.temperature_c);
         runtime->measurement.sample_valid = true;
@@ -53,11 +62,14 @@ converter_runtime_config_t converter_runtime_default_config(void) {
     config.current_offset_a = -2.048f;
     config.bus_gain_v_per_count = 0.01f;
     config.bus_offset_v = 0.0f;
+    config.plant_gain_v_per_count = 0.01f;
+    config.plant_offset_v = -20.48f;
     config.temperature_gain_c_per_count = 0.1f;
     config.temperature_offset_c = -50.0f;
     config.filter_alpha = 0.2f;
     config.command_timeout_ms = 500u;
     config.adc_full_scale = 4095u;
+    config.pll_gate_pwm = true;
     return config;
 }
 
@@ -67,6 +79,8 @@ bool converter_runtime_config_is_valid(const converter_runtime_config_t *config)
            isfinite(config->current_offset_a) &&
            isfinite(config->bus_gain_v_per_count) && config->bus_gain_v_per_count > 0.0f &&
            isfinite(config->bus_offset_v) &&
+           isfinite(config->plant_gain_v_per_count) &&
+           isfinite(config->plant_offset_v) &&
            isfinite(config->temperature_gain_c_per_count) &&
            isfinite(config->temperature_offset_c) &&
            isfinite(config->filter_alpha) && config->filter_alpha > 0.0f && config->filter_alpha <= 1.0f &&
@@ -80,13 +94,22 @@ void converter_runtime_init(converter_runtime_t *runtime,
     runtime->control_config = control_config != NULL ? *control_config : converter_default_config();
     runtime->runtime_config = runtime_config != NULL ? *runtime_config : converter_runtime_default_config();
     converter_init(&runtime->controller);
+    runtime->pll_config = sogi_pll_default_config();
+    sogi_pll_init(&runtime->pll, &runtime->pll_config);
     runtime->measurement.input_current_a = 0.0f;
+    runtime->measurement.current_beta_a = 0.0f;
     runtime->measurement.bus_voltage_v = 0.0f;
+    runtime->measurement.plant_voltage_v = 0.0f;
     runtime->measurement.temperature_c = 0.0f;
+    runtime->measurement.theta_rad = 0.0f;
+    runtime->measurement.theta_valid = false;
     runtime->measurement.sample_valid = false;
+    runtime->i_sogi_alpha = 0.0f;
+    runtime->i_sogi_beta = 0.0f;
     runtime->last_command_ms = 0u;
     runtime->command_received = false;
     runtime->filter_initialized = false;
+    runtime->pwm_released = false;
 }
 
 void converter_runtime_set_reference(converter_runtime_t *runtime,
@@ -109,6 +132,7 @@ void converter_runtime_disarm(converter_runtime_t *runtime) {
     if (runtime == NULL) return;
     converter_disarm(&runtime->controller);
     runtime->command_received = false;
+    runtime->pwm_released = false;
 }
 
 void converter_runtime_step(converter_runtime_t *runtime,
@@ -119,8 +143,10 @@ void converter_runtime_step(converter_runtime_t *runtime,
     if (runtime == NULL) return;
 
     if (!converter_config_is_valid(&runtime->control_config) ||
-        !converter_runtime_config_is_valid(&runtime->runtime_config)) {
+        !converter_runtime_config_is_valid(&runtime->runtime_config) ||
+        !sogi_pll_config_is_valid(&runtime->pll_config)) {
         converter_disarm(&runtime->controller);
+        runtime->pwm_released = false;
         return;
     }
 
@@ -129,22 +155,58 @@ void converter_runtime_step(converter_runtime_t *runtime,
         converter_set_current_reference(&runtime->controller, 0.0f);
         converter_disarm(&runtime->controller);
         runtime->command_received = false;
+        runtime->pwm_released = false;
     }
 
     if (!raw_sample_is_valid(runtime, raw)) {
         invalid.input_current_a = 0.0f;
+        invalid.current_beta_a = 0.0f;
         invalid.bus_voltage_v = 0.0f;
+        invalid.plant_voltage_v = 0.0f;
         invalid.temperature_c = 0.0f;
+        invalid.theta_rad = 0.0f;
+        invalid.theta_valid = false;
         invalid.sample_valid = false;
         converter_step(&runtime->controller, &runtime->control_config, &invalid, dt_s);
+        runtime->pwm_released = false;
+        runtime->controller.duty_command = 0.0f;
         return;
     }
 
     runtime->measurement = convert_sample(runtime, raw);
+
+    /* Sync on U1 only — never a software ramp angle. */
+    sogi_pll_step(&runtime->pll, &runtime->pll_config,
+                  runtime->measurement.plant_voltage_v, dt_s);
+
+    /* Current SOGI → i_beta for Park (same omega as PLL). No harmonic PR. */
+    {
+        const float w = runtime->pll.omega_rad_s;
+        const float k = runtime->pll_config.k_sogi;
+        const float i_a = runtime->measurement.input_current_a;
+        const float d_a = k * (i_a - runtime->i_sogi_alpha) * w - runtime->i_sogi_beta * w;
+        const float d_b = runtime->i_sogi_alpha * w;
+        runtime->i_sogi_alpha += d_a * dt_s;
+        runtime->i_sogi_beta += d_b * dt_s;
+        runtime->measurement.current_beta_a = runtime->i_sogi_beta;
+        runtime->measurement.theta_rad = runtime->pll.theta_rad;
+        runtime->measurement.theta_valid = runtime->pll.locked;
+    }
+
     converter_step(&runtime->controller,
                    &runtime->control_config,
                    &runtime->measurement,
                    dt_s);
+
+    if (runtime->runtime_config.pll_gate_pwm) {
+        runtime->pwm_released = runtime->pll.locked;
+        if (!runtime->pll.locked) {
+            runtime->controller.duty_command = 0.0f;
+            runtime->controller.voltage_command = 0.0f;
+        }
+    } else {
+        runtime->pwm_released = true;
+    }
 }
 
 bool converter_runtime_clear_faults(converter_runtime_t *runtime,
@@ -154,4 +216,12 @@ bool converter_runtime_clear_faults(converter_runtime_t *runtime,
     return converter_clear_faults(&runtime->controller,
                                   &runtime->control_config,
                                   &runtime->measurement);
+}
+
+bool converter_runtime_pll_locked(const converter_runtime_t *runtime) {
+    return runtime != NULL && runtime->pll.locked;
+}
+
+float converter_runtime_pll_theta_rad(const converter_runtime_t *runtime) {
+    return runtime != NULL ? runtime->pll.theta_rad : 0.0f;
 }

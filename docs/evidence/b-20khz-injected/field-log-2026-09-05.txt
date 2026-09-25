@@ -1,0 +1,19 @@
+=== 2026-09-04T22:24:35Z B field log start ===
+cwd=/workspace/ti-cup-push branch=feat/b-20khz-injected-sampling
+--- unit tests ---
+all converter tests passed
+all runtime tests passed
+all timing rate tests passed
+--- rate compare (B) ---
+wrote 8001 samples to simulation/output_rate_20khz.csv  ctrl_dt=5e-05s  updates=8000  Irms_err=0.0000 A  final=1.000 A
+wrote 8001 samples to simulation/output_rate_1khz.csv  ctrl_dt=0.001s  updates=401  Irms_err=0.5673 A  final=0.061 A
+wrote simulation/rate_compare.svg
+step B control-rate comparison
+Vbus=24.0 V  U1=8.0 Vpk @ 100.0 Hz  Iref=1.0 A
+plant_dt=5e-05 s  FF=ON  U1_meas held between control updates
+20 kHz Irms_err=0.000001 A  updates=8000
+1 kHz  Irms_err=0.567273 A  updates=401
+1k/20k rms ratio=556315.76 ( >1 means 20 kHz tracks better )
+1 kHz must not be used as current-loop sample rate
+
+=== field log end ===
