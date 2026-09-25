@@ -13,6 +13,7 @@ static bool finite_measurement(const converter_measurement_t *measurement) {
     return measurement != NULL && measurement->sample_valid &&
            isfinite(measurement->input_current_a) &&
            isfinite(measurement->bus_voltage_v) &&
+           isfinite(measurement->plant_voltage_v) &&
            isfinite(measurement->temperature_c);
 }
 
@@ -34,16 +35,19 @@ static uint32_t evaluate_faults(const converter_config_t *config,
 
 converter_config_t converter_default_config(void) {
     converter_config_t config;
-    config.kp = 0.08f;
-    config.ki = 8.0f;
+    config.kp = 2.0f;
+    config.ki = 200.0f;
     config.current_limit_a = 2.0f;
     config.current_trip_a = 2.5f;
     config.bus_voltage_min_v = 8.0f;
     config.bus_voltage_max_v = 30.0f;
     config.temperature_trip_c = 70.0f;
     config.duty_limit = 0.85f;
+    config.voltage_command_limit = 20.0f;
     config.current_slew_a_per_s = 5.0f;
-    config.integrator_limit = 0.75f;
+    config.integrator_limit = 15.0f;
+    config.mod_bus_min_v = 1.0f;
+    config.feedforward_enable = true;
     return config;
 }
 
@@ -57,8 +61,10 @@ bool converter_config_is_valid(const converter_config_t *config) {
            isfinite(config->bus_voltage_max_v) && config->bus_voltage_max_v > config->bus_voltage_min_v &&
            isfinite(config->temperature_trip_c) && config->temperature_trip_c > 0.0f &&
            isfinite(config->duty_limit) && config->duty_limit > 0.0f && config->duty_limit <= 1.0f &&
+           isfinite(config->voltage_command_limit) && config->voltage_command_limit > 0.0f &&
            isfinite(config->current_slew_a_per_s) && config->current_slew_a_per_s > 0.0f &&
-           isfinite(config->integrator_limit) && config->integrator_limit >= 0.0f;
+           isfinite(config->integrator_limit) && config->integrator_limit >= 0.0f &&
+           isfinite(config->mod_bus_min_v) && config->mod_bus_min_v > 0.0f;
 }
 
 void converter_init(converter_t *converter) {
@@ -69,7 +75,9 @@ void converter_init(converter_t *converter) {
     converter->requested_current_a = 0.0f;
     converter->ramped_current_a = 0.0f;
     converter->integrator = 0.0f;
+    converter->voltage_command = 0.0f;
     converter->duty_command = 0.0f;
+    converter->feedforward_active = false;
 }
 
 void converter_arm(converter_t *converter) {
@@ -82,7 +90,9 @@ void converter_disarm(converter_t *converter) {
     converter->state = converter->faults == CONVERTER_FAULT_NONE ? CONVERTER_STATE_IDLE : CONVERTER_STATE_FAULT;
     converter->ramped_current_a = 0.0f;
     converter->integrator = 0.0f;
+    converter->voltage_command = 0.0f;
     converter->duty_command = 0.0f;
+    converter->feedforward_active = false;
 }
 
 void converter_set_current_reference(converter_t *converter, float current_a) {
@@ -100,16 +110,20 @@ void converter_step(converter_t *converter,
         converter->faults |= new_faults;
         converter->state = CONVERTER_STATE_FAULT;
         converter->armed = false;
+        converter->voltage_command = 0.0f;
         converter->duty_command = 0.0f;
         converter->integrator = 0.0f;
+        converter->feedforward_active = false;
         return;
     }
 
     if (!converter->armed || converter->faults != CONVERTER_FAULT_NONE) {
         converter->state = converter->faults == CONVERTER_FAULT_NONE ? CONVERTER_STATE_IDLE : CONVERTER_STATE_FAULT;
+        converter->voltage_command = 0.0f;
         converter->duty_command = 0.0f;
         converter->integrator = 0.0f;
         converter->ramped_current_a = 0.0f;
+        converter->feedforward_active = false;
         return;
     }
 
@@ -124,13 +138,24 @@ void converter_step(converter_t *converter,
                                               -config->integrator_limit,
                                               config->integrator_limit);
     const float unsaturated = config->kp * error + candidate_integrator;
-    const float output = clampf(unsaturated, -config->duty_limit, config->duty_limit);
-    if (output == unsaturated ||
-        (output >= config->duty_limit && error < 0.0f) ||
-        (output <= -config->duty_limit && error > 0.0f)) {
+    const float u_i = clampf(unsaturated, -config->voltage_command_limit, config->voltage_command_limit);
+    if (u_i == unsaturated ||
+        (u_i >= config->voltage_command_limit && error < 0.0f) ||
+        (u_i <= -config->voltage_command_limit && error > 0.0f)) {
         converter->integrator = candidate_integrator;
     }
-    converter->duty_command = output;
+    converter->voltage_command = u_i;
+    converter->feedforward_active = config->feedforward_enable;
+
+    const float vbus = measurement->bus_voltage_v;
+    if (!(vbus > config->mod_bus_min_v)) {
+        converter->duty_command = 0.0f;
+        return;
+    }
+
+    const float u1 = config->feedforward_enable ? measurement->plant_voltage_v : 0.0f;
+    const float duty_raw = (u_i + u1) / vbus;
+    converter->duty_command = clampf(duty_raw, -config->duty_limit, config->duty_limit);
 }
 
 bool converter_clear_faults(converter_t *converter,
@@ -142,7 +167,9 @@ bool converter_clear_faults(converter_t *converter,
     converter->state = CONVERTER_STATE_IDLE;
     converter->integrator = 0.0f;
     converter->ramped_current_a = 0.0f;
+    converter->voltage_command = 0.0f;
     converter->duty_command = 0.0f;
+    converter->feedforward_active = false;
     return true;
 }
 
