@@ -21,6 +21,7 @@
 - 主机端 CSV 演示与无第三方依赖的 Python 平均模型
 - STM32Cube HAL 参考接入：ADC DMA、TIM1 PWM、1 ms 调度
 - MAX485 / Modbus RTU 引脚建议和寄存器表
+- 无依赖的主机端 Modbus 帧工具与 12 个输入寄存器遥测解析（CRC、负值、单位和字序校验）
 
 > 这些内容适合学习、软件验证和隔离低压移植起点；它们不是经过认证或高功率实机验证的完整变流器产品。
 
@@ -55,6 +56,8 @@ Windows 多配置生成器的演示程序通常位于 `build/Release/converter_d
 具体功率拓扑可能需要互补 PWM、死区和独立栅极驱动互锁，不能直接照搬抽象方向输出。引脚、定时器和标定值必须按自己的板卡修改。
 
 通信寄存器见 [`docs/MODBUS_REGISTER_MAP.md`](docs/MODBUS_REGISTER_MAP.md)，portable core 说明见 [`firmware/README.md`](firmware/README.md)。
+
+主机端读取/解析示例见 [`examples/host/`](examples/host/)。通用帧模块从 [`ti-cup-resources`](https://github.com/yniantongtian-oss/ti-cup-resources) 提炼，固定来源与许可证见 [`tools/sources.json`](tools/sources.json)。这完成主机帧与遥测层的接入；STM32 Modbus 从站与真实串口接入仍需单独实现和验证。
 
 ## 安全说明 | Safety Notice
 

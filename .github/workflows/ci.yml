@@ -8,6 +8,24 @@ permissions:
   contents: read
 
 jobs:
+  host-protocol:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ['3.10', '3.14']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Verify imported sources
+        run: python scripts/verify_sources.py
+      - name: Test frame and telemetry integration
+        run: python -m unittest discover -s tests -v
+      - name: Exercise read-only telemetry request
+        run: python examples/host/converter_telemetry.py request
   portable-core:
     strategy:
       fail-fast: false
