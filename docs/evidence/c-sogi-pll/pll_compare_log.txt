@@ -1,0 +1,6 @@
+step C SOGI-PLL PWM gate comparison
+U1=8 Vpk @ 100 Hz, Vbus=24 V, Iref=1 A, dt=50 us
+gated lock_time_s=0.0355  final_i=1.0000
+ungated (cheat) final_i=1.0000  — illegal product path
+sync source: SOGI-PLL on U1 only; no RAMPGEN
+PWM duty forced 0 until pll.locked

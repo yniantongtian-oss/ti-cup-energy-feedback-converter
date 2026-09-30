@@ -1,0 +1,5 @@
+step D Park+Iq=0 comparison
+U1=8 Vpk @ 100 Hz, Vbus=24, Id_ref=1 A, dual PI, no PR
+Park ON  Iq_rms=0.009715 A
+Park OFF Iq_rms=1.224738 A
+OFF/ON Iq_rms ratio=126.06 ( >1 means Park+Iq=0 better )

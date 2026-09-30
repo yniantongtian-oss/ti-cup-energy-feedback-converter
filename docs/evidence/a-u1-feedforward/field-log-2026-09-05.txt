@@ -1,0 +1,17 @@
+=== 2026-09-04T22:20:29Z field log start ===
+cwd=/workspace/audit-tiday6e
+--- unit tests ---
+all converter tests passed
+all runtime tests passed
+--- sim compare ---
+wrote 2001 samples to simulation/output_ff_on.csv  ff=ON  Irms_err(after 0.15s)=0.0000 A  final=1.000 A
+wrote 2001 samples to simulation/output_ff_off.csv  ff=OFF  Irms_err(after 0.15s)=2.1631 A  final=1.728 A
+wrote simulation/ff_compare.svg
+step A feedforward comparison
+Vbus=24.0 V  U1=8.0 Vpk @ 100.0 Hz  Iref=1.0 A
+FF ON  Irms_err=0.000001 A  final=1.0000 A
+FF OFF Irms_err=2.163095 A  final=1.7282 A
+OFF/ON rms ratio=2035927.21 ( >1 means ON tracks better )
+duty = (u_i + U1)/Vbus when ON; duty = u_i/Vbus when OFF
+
+=== field log end ===
