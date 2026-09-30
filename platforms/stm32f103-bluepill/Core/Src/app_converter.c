@@ -8,7 +8,15 @@ extern ADC_HandleTypeDef hadc1;
 extern TIM_HandleTypeDef htim1;
 
 static converter_runtime_t g_runtime;
-static volatile uint16_t g_adc_dma[3] = {0u, 0u, 0u};
+/*
+ * Regular group DMA (slow, ~1 kHz refresh path): IN1 bus, IN2 temp.
+ * Injected group (TIM1 OCxREF, ~20 kHz): rank1=IN0 current, rank2=IN3 U1.
+ * Do NOT put current/U1 only on regular continuous — that is not PWM-phase locked.
+ */
+static volatile uint16_t g_adc_dma[2] = {0u, 0u};
+static volatile uint16_t g_slow_bus_adc = 0u;
+static volatile uint16_t g_slow_temp_adc = 0u;
+static volatile uint32_t g_current_loop_count = 0u;
 static bool g_emergency_latched = false;
 
 static bool hardware_inputs_safe(void) {
@@ -39,7 +47,6 @@ static void apply_signed_duty(float duty) {
     compare = (uint32_t)(fabsf(duty) * (float)period);
     if (compare >= period) compare = period - 1u;
 
-    /* Never command both power-flow directions at the same time. */
     if (duty > 0.0f) {
         __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, 0u);
         __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, compare);
@@ -49,11 +56,12 @@ static void apply_signed_duty(float duty) {
     }
 }
 
-static converter_raw_sample_t current_raw_sample(void) {
+static converter_raw_sample_t make_raw(uint16_t current_adc, uint16_t plant_adc) {
     converter_raw_sample_t raw;
-    raw.current_adc = g_adc_dma[0];
-    raw.bus_adc = g_adc_dma[1];
-    raw.temperature_adc = g_adc_dma[2];
+    raw.current_adc = current_adc;
+    raw.plant_adc = plant_adc;
+    raw.bus_adc = g_slow_bus_adc;
+    raw.temperature_adc = g_slow_temp_adc;
     raw.sample_valid = true;
     raw.hardware_fault = !hardware_inputs_safe();
     return raw;
@@ -63,29 +71,50 @@ void AppConverter_Init(void) {
     converter_config_t control = converter_default_config();
     converter_runtime_config_t runtime = converter_runtime_default_config();
 
-    /* Replace these calibration values with measurements from your own board. */
     runtime.current_gain_a_per_count = 0.001f;
     runtime.current_offset_a = -2.048f;
     runtime.bus_gain_v_per_count = 0.01f;
     runtime.bus_offset_v = 0.0f;
+    runtime.plant_gain_v_per_count = 0.01f;
+    runtime.plant_offset_v = -20.48f;
     runtime.temperature_gain_c_per_count = 0.1f;
     runtime.temperature_offset_c = -50.0f;
     runtime.command_timeout_ms = 500u;
 
     converter_runtime_init(&g_runtime, &control, &runtime);
     g_emergency_latched = false;
+    g_current_loop_count = 0u;
     force_pwm_off();
 
     (void)HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
     (void)HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
     force_pwm_off();
-    (void)HAL_ADC_Start_DMA(&hadc1, (uint32_t *)g_adc_dma, 3u);
+
+    /* Regular: bus + temp only. Injected start is in CubeMX / MX_ADC1_Init side. */
+    (void)HAL_ADC_Start_DMA(&hadc1, (uint32_t *)g_adc_dma, 2u);
+    (void)HAL_ADCEx_InjectedStart_IT(&hadc1);
+}
+
+void AppConverter_CurrentLoopFromInjected(uint16_t current_adc,
+                                          uint16_t plant_adc_u1,
+                                          uint32_t now_ms) {
+    converter_raw_sample_t raw = make_raw(current_adc, plant_adc_u1);
+    converter_runtime_step(&g_runtime, &raw, now_ms, APP_CURRENT_LOOP_DT_S);
+    /* Step C: SOGI-PLL must lock U1 before PWM; runtime zeros duty if unlocked. */
+    if (!g_runtime.pwm_released) {
+        force_pwm_off();
+    } else {
+        apply_signed_duty(g_runtime.controller.duty_command);
+    }
+    g_current_loop_count++;
 }
 
 void AppConverter_1msTask(uint32_t now_ms) {
-    converter_raw_sample_t raw = current_raw_sample();
-    converter_runtime_step(&g_runtime, &raw, now_ms, 0.001f);
-    apply_signed_duty(g_runtime.controller.duty_command);
+    /* Slow path only: cache bus/temp for the next injected ISR. No PI, no PWM write. */
+    g_slow_bus_adc = g_adc_dma[0];
+    g_slow_temp_adc = g_adc_dma[1];
+    (void)now_ms;
+    /* Command timeout still evaluated inside the 20 kHz step using now_ms. */
 }
 
 void AppConverter_SetCurrentMilliamp(int16_t current_ma, uint32_t now_ms) {
@@ -106,7 +135,8 @@ void AppConverter_Disarm(void) {
 bool AppConverter_ClearFaults(void) {
     converter_raw_sample_t raw;
     if (!hardware_inputs_safe()) return false;
-    raw = current_raw_sample();
+    raw = make_raw(0u, 2048u);
+    raw.current_adc = 2048u;
     return converter_runtime_clear_faults(&g_runtime, &raw);
 }
 
@@ -123,3 +153,19 @@ const converter_runtime_t *AppConverter_GetRuntime(void) {
 const volatile uint16_t *AppConverter_GetAdcDmaBuffer(void) {
     return g_adc_dma;
 }
+
+uint32_t AppConverter_GetCurrentLoopCount(void) {
+    return g_current_loop_count;
+}
+
+/*
+ * Hook for Cube-generated stm32f1xx_it.c / HAL:
+ *   void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc) {
+ *     if (hadc->Instance != ADC1) return;
+ *     AppConverter_CurrentLoopFromInjected(
+ *         HAL_ADCEx_InjectedGetValue(hadc, ADC_INJECTED_RANK_1),
+ *         HAL_ADCEx_InjectedGetValue(hadc, ADC_INJECTED_RANK_2),
+ *         HAL_GetTick());
+ *   }
+ * Trigger must be TIM1 OCxREF (quiet point), NOT TIM1 Update (2×PWM on center-aligned).
+ */
