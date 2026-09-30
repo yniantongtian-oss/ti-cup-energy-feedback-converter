@@ -12,6 +12,7 @@ static bool raw_sample_is_valid(const converter_runtime_t *runtime,
     if (runtime == NULL || raw == NULL || !raw->sample_valid || raw->hardware_fault) return false;
     return raw->current_adc <= runtime->runtime_config.adc_full_scale &&
            raw->bus_adc <= runtime->runtime_config.adc_full_scale &&
+           raw->plant_adc <= runtime->runtime_config.adc_full_scale &&
            raw->temperature_adc <= runtime->runtime_config.adc_full_scale;
 }
 
@@ -26,6 +27,9 @@ static converter_measurement_t convert_sample(converter_runtime_t *runtime,
     converted.bus_voltage_v = calibrated(raw->bus_adc,
                                          config->bus_gain_v_per_count,
                                          config->bus_offset_v);
+    converted.plant_voltage_v = calibrated(raw->plant_adc,
+                                           config->plant_gain_v_per_count,
+                                           config->plant_offset_v);
     converted.temperature_c = calibrated(raw->temperature_adc,
                                          config->temperature_gain_c_per_count,
                                          config->temperature_offset_c);
@@ -40,6 +44,8 @@ static converter_measurement_t convert_sample(converter_runtime_t *runtime,
             alpha * (converted.input_current_a - runtime->measurement.input_current_a);
         runtime->measurement.bus_voltage_v +=
             alpha * (converted.bus_voltage_v - runtime->measurement.bus_voltage_v);
+        runtime->measurement.plant_voltage_v +=
+            alpha * (converted.plant_voltage_v - runtime->measurement.plant_voltage_v);
         runtime->measurement.temperature_c +=
             alpha * (converted.temperature_c - runtime->measurement.temperature_c);
         runtime->measurement.sample_valid = true;
@@ -53,6 +59,8 @@ converter_runtime_config_t converter_runtime_default_config(void) {
     config.current_offset_a = -2.048f;
     config.bus_gain_v_per_count = 0.01f;
     config.bus_offset_v = 0.0f;
+    config.plant_gain_v_per_count = 0.01f;
+    config.plant_offset_v = -20.48f;
     config.temperature_gain_c_per_count = 0.1f;
     config.temperature_offset_c = -50.0f;
     config.filter_alpha = 0.2f;
@@ -67,6 +75,8 @@ bool converter_runtime_config_is_valid(const converter_runtime_config_t *config)
            isfinite(config->current_offset_a) &&
            isfinite(config->bus_gain_v_per_count) && config->bus_gain_v_per_count > 0.0f &&
            isfinite(config->bus_offset_v) &&
+           isfinite(config->plant_gain_v_per_count) &&
+           isfinite(config->plant_offset_v) &&
            isfinite(config->temperature_gain_c_per_count) &&
            isfinite(config->temperature_offset_c) &&
            isfinite(config->filter_alpha) && config->filter_alpha > 0.0f && config->filter_alpha <= 1.0f &&
@@ -82,6 +92,7 @@ void converter_runtime_init(converter_runtime_t *runtime,
     converter_init(&runtime->controller);
     runtime->measurement.input_current_a = 0.0f;
     runtime->measurement.bus_voltage_v = 0.0f;
+    runtime->measurement.plant_voltage_v = 0.0f;
     runtime->measurement.temperature_c = 0.0f;
     runtime->measurement.sample_valid = false;
     runtime->last_command_ms = 0u;
@@ -134,6 +145,7 @@ void converter_runtime_step(converter_runtime_t *runtime,
     if (!raw_sample_is_valid(runtime, raw)) {
         invalid.input_current_a = 0.0f;
         invalid.bus_voltage_v = 0.0f;
+        invalid.plant_voltage_v = 0.0f;
         invalid.temperature_c = 0.0f;
         invalid.sample_valid = false;
         converter_step(&runtime->controller, &runtime->control_config, &invalid, dt_s);

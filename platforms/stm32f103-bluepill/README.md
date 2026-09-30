@@ -19,6 +19,7 @@
 | 电流采样 | PA0 | ADC1_IN0 |
 | 母线电压采样 | PA1 | ADC1_IN1 |
 | 温度采样 | PA2 | ADC1_IN2 |
+| 植物侧 U1 | PA3 | ADC1_IN3（软件通道，板上可暂无探头） |
 | 正向 PWM | PA8 | TIM1_CH1 |
 | 反向 PWM | PA9 | TIM1_CH2（与 USART1 TX 冲突时改用 PB14/TIM1_CH2N 或其他定时器） |
 | RS485 TX | PB10 | USART3_TX |
@@ -32,7 +33,7 @@
 ## CubeMX 配置
 
 1. ADC1 使用 Scan Conversion + Continuous Conversion + DMA Circular。
-2. 通道顺序固定为 IN0、IN1、IN2，采样时间建议从 55.5 cycles 起步。
+2. 通道顺序固定为 IN0、IN1、IN2、IN3（U1=PA3），采样时间建议从 55.5 cycles 起步。没有探头时 IN3 仍占位，标定成 0 V。
 3. TIM1 设置为 20 kHz PWM；上电时两个通道占空比必须为 0。
 4. USART3 设置为 9600 或 19200 bps、8N1。
 5. PB12/PB13 配置为上拉输入；外部硬件故障或急停触发时立即关断 PWM。
@@ -69,3 +70,8 @@
 5. 最后才进行闭环调参，并从极低电流限值开始。
 
 详细通信寄存器见 [`../../docs/MODBUS_REGISTER_MAP.md`](../../docs/MODBUS_REGISTER_MAP.md)。
+
+
+## 已锁定、本步未实现的保护脚（F）
+
+过流硬件掐门预定 **PA6 = TIM1_BKIN**，低有效，BKP=0，AOE=0。PB12 仍是 GPIO 故障输入，**不能替代 BKIN**。比较器/nFAULT 器件未上板时固件仍按 PA6 预留，不改板。本 PR 只做 A（U1 前馈），不配 BDTR。

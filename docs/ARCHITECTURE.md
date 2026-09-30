@@ -42,10 +42,11 @@ This document describes the overall software and hardware architecture of the en
 
 ## Key Control Loops | 关键控制循环
 
-- Inner current loop (fast)
-- Outer voltage loop
-- Energy feedback / recovery logic
-- Mode switching logic (buck, boost, bidirectional)
+- Inner current loop (PI). Output is voltage `u_i`, not duty.
+- Duty: `(u_i + U1) / Vbus`. Feedforward default ON. U1 is plant-side voltage (PA3/ADC1_IN3).
+- Outer voltage loop — **not in this step**
+- Energy feedback / recovery logic — **not in this step**
+- Sync (SOGI-PLL), 20 kHz ISR, TIM1 BKIN — **later steps, not claimed done**
 
 ## Safety & Protection | 安全与保护
 
