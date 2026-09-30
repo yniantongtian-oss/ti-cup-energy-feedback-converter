@@ -1,0 +1,7 @@
+step B control-rate comparison
+Vbus=24.0 V  U1=8.0 Vpk @ 100.0 Hz  Iref=1.0 A
+plant_dt=5e-05 s  FF=ON  U1_meas held between control updates
+20 kHz Irms_err=0.000001 A  updates=8000
+1 kHz  Irms_err=0.567273 A  updates=401
+1k/20k rms ratio=556315.76 ( >1 means 20 kHz tracks better )
+1 kHz must not be used as current-loop sample rate
