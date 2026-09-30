@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "sources": [
+    {
+      "repository": "yniantongtian-oss/ti-cup-resources",
+      "commit": "84e341cfe4a3d7f3c1eb9e1622f465d696b92bc6",
+      "source_path": "tools/modbus_rtu.py",
+      "destination": "tools/modbus_rtu.py",
+      "source_url": "https://github.com/yniantongtian-oss/ti-cup-resources/blob/84e341cfe4a3d7f3c1eb9e1622f465d696b92bc6/tools/modbus_rtu.py",
+      "sha256": "d4b58bf981d6f108443db13df3396a727c94bfccac1e018bb85c1ceb8964aae1",
+      "license": "MIT"
+    },
+    {
+      "repository": "yniantongtian-oss/ti-cup-resources",
+      "commit": "84e341cfe4a3d7f3c1eb9e1622f465d696b92bc6",
+      "source_path": "tests/test_modbus_rtu.py",
+      "destination": "tests/test_modbus_rtu.py",
+      "source_url": "https://github.com/yniantongtian-oss/ti-cup-resources/blob/84e341cfe4a3d7f3c1eb9e1622f465d696b92bc6/tests/test_modbus_rtu.py",
+      "sha256": "503951894703fb32d6648c1b2cf1e1055803c50522b9cdb2293bbc8334119585",
+      "license": "MIT"
+    },
+    {
+      "repository": "yniantongtian-oss/ti-cup-resources",
+      "commit": "84e341cfe4a3d7f3c1eb9e1622f465d696b92bc6",
+      "source_path": "LICENSE",
+      "destination": "licenses/ti-cup-resources-MIT.txt",
+      "source_url": "https://github.com/yniantongtian-oss/ti-cup-resources/blob/84e341cfe4a3d7f3c1eb9e1622f465d696b92bc6/LICENSE",
+      "sha256": "b1b63807f0497e4227bb80ae27420d233cb99a6b2798d99c32a45372e8f13431",
+      "license": "MIT"
+    }
+  ]
+}
