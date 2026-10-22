@@ -94,6 +94,7 @@ void AppConverter_SetCurrentMilliamp(int16_t current_ma, uint32_t now_ms) {
 
 bool AppConverter_Arm(uint32_t now_ms) {
     if (!hardware_inputs_safe() || g_runtime.controller.faults != CONVERTER_FAULT_NONE) return false;
+    if (!g_runtime.measurement.sample_valid) return false;
     converter_runtime_arm(&g_runtime, now_ms);
     return g_runtime.controller.armed;
 }
@@ -112,8 +113,16 @@ bool AppConverter_ClearFaults(void) {
 
 void AppConverter_EmergencyStop(void) {
     g_emergency_latched = true;
-    converter_runtime_disarm(&g_runtime);
+    converter_runtime_emergency_stop(&g_runtime);
     force_pwm_off();
+}
+
+bool AppConverter_AcknowledgeEstop(void) {
+#if defined(ESTOP_GPIO_Port) && defined(ESTOP_Pin)
+    if (HAL_GPIO_ReadPin(ESTOP_GPIO_Port, ESTOP_Pin) == GPIO_PIN_RESET) return false;
+#endif
+    g_emergency_latched = false;
+    return converter_runtime_acknowledge_estop(&g_runtime);
 }
 
 const converter_runtime_t *AppConverter_GetRuntime(void) {

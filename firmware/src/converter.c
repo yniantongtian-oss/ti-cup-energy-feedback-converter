@@ -1,41 +1,41 @@
 #include "converter.h"
 
+#include "converter_math.h"
+#include "protection.h"
+
 #include <math.h>
 #include <stddef.h>
 
-static float clampf(float value, float minimum, float maximum) {
-    if (value < minimum) return minimum;
-    if (value > maximum) return maximum;
-    return value;
+static void stop_actuators(converter_t *converter) {
+    converter->armed = false;
+    converter->ramped_current_a = 0.0f;
+    converter->duty_command = 0.0f;
+    pid_reset(&converter->current_pid);
+    converter->integrator = 0.0f;
 }
 
-static bool finite_measurement(const converter_measurement_t *measurement) {
-    return measurement != NULL && measurement->sample_valid &&
-           isfinite(measurement->input_current_a) &&
-           isfinite(measurement->bus_voltage_v) &&
-           isfinite(measurement->temperature_c);
+static void latch_fault(converter_t *converter, uint32_t faults) {
+    converter->faults |= faults;
+    converter->state = CONVERTER_STATE_FAULT;
+    stop_actuators(converter);
 }
 
-static uint32_t evaluate_faults(const converter_config_t *config,
-                                const converter_measurement_t *measurement,
-                                float dt_s) {
-    uint32_t faults = CONVERTER_FAULT_NONE;
-    if (!isfinite(dt_s) || dt_s <= 0.0f || dt_s > 1.0f) faults |= CONVERTER_FAULT_BAD_TIMESTEP;
-    if (!finite_measurement(measurement)) {
-        faults |= CONVERTER_FAULT_INVALID_SAMPLE;
-        return faults;
-    }
-    if (fabsf(measurement->input_current_a) > config->current_trip_a) faults |= CONVERTER_FAULT_OVERCURRENT;
-    if (measurement->bus_voltage_v > config->bus_voltage_max_v) faults |= CONVERTER_FAULT_OVERVOLTAGE;
-    if (measurement->bus_voltage_v < config->bus_voltage_min_v) faults |= CONVERTER_FAULT_UNDERVOLTAGE;
-    if (measurement->temperature_c > config->temperature_trip_c) faults |= CONVERTER_FAULT_OVERTEMPERATURE;
-    return faults;
+static pid_gains_t gains_from_config(const converter_config_t *config) {
+    pid_gains_t gains;
+    gains.kp = config->kp;
+    gains.ki = config->ki;
+    gains.kd = config->kd;
+    gains.output_limit = config->duty_limit;
+    gains.integrator_limit = config->integrator_limit;
+    gains.derivative_filter_hz = config->derivative_filter_hz;
+    return gains;
 }
 
 converter_config_t converter_default_config(void) {
     converter_config_t config;
     config.kp = 0.08f;
     config.ki = 8.0f;
+    config.kd = 0.0f;
     config.current_limit_a = 2.0f;
     config.current_trip_a = 2.5f;
     config.bus_voltage_min_v = 8.0f;
@@ -44,25 +44,29 @@ converter_config_t converter_default_config(void) {
     config.duty_limit = 0.85f;
     config.current_slew_a_per_s = 5.0f;
     config.integrator_limit = 0.75f;
+    config.derivative_filter_hz = 0.0f;
     return config;
 }
 
 bool converter_config_is_valid(const converter_config_t *config) {
-    if (config == NULL) return false;
-    return isfinite(config->kp) && config->kp >= 0.0f &&
-           isfinite(config->ki) && config->ki >= 0.0f &&
+    pid_gains_t gains;
+    if (config == NULL) {
+        return false;
+    }
+    gains = gains_from_config(config);
+    return pid_gains_valid(&gains) &&
            isfinite(config->current_limit_a) && config->current_limit_a > 0.0f &&
            isfinite(config->current_trip_a) && config->current_trip_a > config->current_limit_a &&
            isfinite(config->bus_voltage_min_v) && config->bus_voltage_min_v >= 0.0f &&
            isfinite(config->bus_voltage_max_v) && config->bus_voltage_max_v > config->bus_voltage_min_v &&
            isfinite(config->temperature_trip_c) && config->temperature_trip_c > 0.0f &&
-           isfinite(config->duty_limit) && config->duty_limit > 0.0f && config->duty_limit <= 1.0f &&
-           isfinite(config->current_slew_a_per_s) && config->current_slew_a_per_s > 0.0f &&
-           isfinite(config->integrator_limit) && config->integrator_limit >= 0.0f;
+           isfinite(config->current_slew_a_per_s) && config->current_slew_a_per_s > 0.0f;
 }
 
 void converter_init(converter_t *converter) {
-    if (converter == NULL) return;
+    if (converter == NULL) {
+        return;
+    }
     converter->state = CONVERTER_STATE_IDLE;
     converter->faults = CONVERTER_FAULT_NONE;
     converter->armed = false;
@@ -70,87 +74,110 @@ void converter_init(converter_t *converter) {
     converter->ramped_current_a = 0.0f;
     converter->integrator = 0.0f;
     converter->duty_command = 0.0f;
+    pid_reset(&converter->current_pid);
 }
 
 void converter_arm(converter_t *converter) {
-    if (converter != NULL && converter->faults == CONVERTER_FAULT_NONE) converter->armed = true;
+    if (converter != NULL && converter->faults == CONVERTER_FAULT_NONE) {
+        converter->armed = true;
+    }
 }
 
 void converter_disarm(converter_t *converter) {
-    if (converter == NULL) return;
-    converter->armed = false;
-    converter->state = converter->faults == CONVERTER_FAULT_NONE ? CONVERTER_STATE_IDLE : CONVERTER_STATE_FAULT;
-    converter->ramped_current_a = 0.0f;
-    converter->integrator = 0.0f;
-    converter->duty_command = 0.0f;
+    if (converter == NULL) {
+        return;
+    }
+    stop_actuators(converter);
+    converter->state = converter->faults == CONVERTER_FAULT_NONE ? CONVERTER_STATE_IDLE
+                                                                 : CONVERTER_STATE_FAULT;
 }
 
 void converter_set_current_reference(converter_t *converter, float current_a) {
-    if (converter != NULL && isfinite(current_a)) converter->requested_current_a = current_a;
+    if (converter != NULL && isfinite(current_a)) {
+        converter->requested_current_a = current_a;
+    }
 }
 
 void converter_step(converter_t *converter,
                     const converter_config_t *config,
                     const converter_measurement_t *measurement,
                     float dt_s) {
-    if (converter == NULL || !converter_config_is_valid(config)) return;
+    uint32_t new_faults;
+    pid_gains_t gains;
+    float target;
+    float max_delta;
+    float delta;
 
-    const uint32_t new_faults = evaluate_faults(config, measurement, dt_s);
-    if (new_faults != CONVERTER_FAULT_NONE) {
-        converter->faults |= new_faults;
-        converter->state = CONVERTER_STATE_FAULT;
-        converter->armed = false;
-        converter->duty_command = 0.0f;
-        converter->integrator = 0.0f;
+    if (converter == NULL) {
+        return;
+    }
+    if (!converter_config_is_valid(config)) {
+        stop_actuators(converter);
+        converter->state = converter->faults == CONVERTER_FAULT_NONE ? CONVERTER_STATE_IDLE
+                                                                     : CONVERTER_STATE_FAULT;
         return;
     }
 
-    if (!converter->armed || converter->faults != CONVERTER_FAULT_NONE) {
-        converter->state = converter->faults == CONVERTER_FAULT_NONE ? CONVERTER_STATE_IDLE : CONVERTER_STATE_FAULT;
-        converter->duty_command = 0.0f;
-        converter->integrator = 0.0f;
-        converter->ramped_current_a = 0.0f;
+    new_faults = protection_evaluate(config, measurement, dt_s);
+    if (new_faults != CONVERTER_FAULT_NONE) {
+        latch_fault(converter, new_faults);
+        return;
+    }
+    if (converter->faults != CONVERTER_FAULT_NONE) {
+        converter->state = CONVERTER_STATE_FAULT;
+        stop_actuators(converter);
+        return;
+    }
+    if (!converter->armed) {
+        converter->state = CONVERTER_STATE_IDLE;
+        stop_actuators(converter);
         return;
     }
 
     converter->state = CONVERTER_STATE_RUN;
-    const float target = clampf(converter->requested_current_a, -config->current_limit_a, config->current_limit_a);
-    const float max_delta = config->current_slew_a_per_s * dt_s;
-    const float delta = clampf(target - converter->ramped_current_a, -max_delta, max_delta);
+    target = converter_clampf(converter->requested_current_a,
+                              -config->current_limit_a,
+                              config->current_limit_a);
+    max_delta = config->current_slew_a_per_s * dt_s;
+    delta = converter_clampf(target - converter->ramped_current_a, -max_delta, max_delta);
     converter->ramped_current_a += delta;
 
-    const float error = converter->ramped_current_a - measurement->input_current_a;
-    const float candidate_integrator = clampf(converter->integrator + config->ki * error * dt_s,
-                                              -config->integrator_limit,
-                                              config->integrator_limit);
-    const float unsaturated = config->kp * error + candidate_integrator;
-    const float output = clampf(unsaturated, -config->duty_limit, config->duty_limit);
-    if (output == unsaturated ||
-        (output >= config->duty_limit && error < 0.0f) ||
-        (output <= -config->duty_limit && error > 0.0f)) {
-        converter->integrator = candidate_integrator;
-    }
-    converter->duty_command = output;
+    gains = gains_from_config(config);
+    converter->duty_command = pid_step(&converter->current_pid,
+                                       &gains,
+                                       converter->ramped_current_a,
+                                       measurement->input_current_a,
+                                       dt_s);
+    converter->integrator = converter->current_pid.integrator;
 }
 
 bool converter_clear_faults(converter_t *converter,
                             const converter_config_t *config,
                             const converter_measurement_t *measurement) {
-    if (converter == NULL || !converter_config_is_valid(config) || converter->armed) return false;
-    if (evaluate_faults(config, measurement, 0.001f) != CONVERTER_FAULT_NONE) return false;
+    if (converter == NULL || !converter_config_is_valid(config) || converter->armed) {
+        return false;
+    }
+    if ((converter->faults & CONVERTER_FAULT_ESTOP) != 0u) {
+        return false;
+    }
+    if (protection_evaluate(config, measurement, 0.001f) != CONVERTER_FAULT_NONE) {
+        return false;
+    }
     converter->faults = CONVERTER_FAULT_NONE;
     converter->state = CONVERTER_STATE_IDLE;
-    converter->integrator = 0.0f;
-    converter->ramped_current_a = 0.0f;
-    converter->duty_command = 0.0f;
+    stop_actuators(converter);
     return true;
 }
 
 const char *converter_state_name(converter_state_t state) {
     switch (state) {
-        case CONVERTER_STATE_IDLE: return "IDLE";
-        case CONVERTER_STATE_RUN: return "RUN";
-        case CONVERTER_STATE_FAULT: return "FAULT";
-        default: return "UNKNOWN";
+        case CONVERTER_STATE_IDLE:
+            return "IDLE";
+        case CONVERTER_STATE_RUN:
+            return "RUN";
+        case CONVERTER_STATE_FAULT:
+            return "FAULT";
+        default:
+            return "UNKNOWN";
     }
 }

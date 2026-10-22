@@ -2,12 +2,12 @@
 
 通用 CRC、请求构造和寄存器响应解析从同账号的 `ti-cup-resources` 提炼，保留固定来源与 MIT 许可证，见 [sources.json](../../tools/sources.json)。
 
-依赖：Python 3.10+，不需要 PySerial 或第三方包。
+依赖：Python 3.10+。遥测脚本不需要 PySerial；仓库测试使用 `requirements-dev.txt` 中的 pytest。
 
 ```bash
 python examples/host/converter_telemetry.py request
 python tools/modbus_rtu.py read 1 0 12 --input
-python -m unittest discover -s tests -v
+python -m pytest
 ```
 
 前两个命令输出读取地址 0..11 的功能码 0x04 请求帧，不打开串口或发送字节。

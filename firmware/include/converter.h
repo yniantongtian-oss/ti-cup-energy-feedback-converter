@@ -1,6 +1,8 @@
 #ifndef CONVERTER_H
 #define CONVERTER_H
 
+#include "pid.h"
+
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -14,19 +16,26 @@ typedef enum {
     CONVERTER_STATE_FAULT
 } converter_state_t;
 
+/* Bit positions match docs/MODBUS_REGISTER_MAP.md. Bit 9 (parameter CRC)
+ * is reserved and is not raised by this core.
+ */
 typedef enum {
     CONVERTER_FAULT_NONE = 0,
-    CONVERTER_FAULT_INVALID_SAMPLE = 1u << 0,
-    CONVERTER_FAULT_OVERCURRENT = 1u << 1,
-    CONVERTER_FAULT_OVERVOLTAGE = 1u << 2,
-    CONVERTER_FAULT_UNDERVOLTAGE = 1u << 3,
-    CONVERTER_FAULT_OVERTEMPERATURE = 1u << 4,
-    CONVERTER_FAULT_BAD_TIMESTEP = 1u << 5
+    CONVERTER_FAULT_OVERCURRENT = 1u << 0,
+    CONVERTER_FAULT_OVERVOLTAGE = 1u << 1,
+    CONVERTER_FAULT_UNDERVOLTAGE = 1u << 2,
+    CONVERTER_FAULT_OVERTEMPERATURE = 1u << 3,
+    CONVERTER_FAULT_INVALID_SAMPLE = 1u << 4,
+    CONVERTER_FAULT_BAD_TIMESTEP = 1u << 5,
+    CONVERTER_FAULT_HARDWARE = 1u << 6,
+    CONVERTER_FAULT_ESTOP = 1u << 7,
+    CONVERTER_FAULT_COMM_TIMEOUT = 1u << 8
 } converter_fault_t;
 
 typedef struct {
     float kp;
     float ki;
+    float kd;
     float current_limit_a;
     float current_trip_a;
     float bus_voltage_min_v;
@@ -35,6 +44,7 @@ typedef struct {
     float duty_limit;
     float current_slew_a_per_s;
     float integrator_limit;
+    float derivative_filter_hz;
 } converter_config_t;
 
 typedef struct {
@@ -52,6 +62,7 @@ typedef struct {
     float ramped_current_a;
     float integrator;
     float duty_command;
+    pid_state_t current_pid;
 } converter_t;
 
 converter_config_t converter_default_config(void);

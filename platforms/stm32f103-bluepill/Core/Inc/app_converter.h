@@ -18,6 +18,11 @@ void AppConverter_Disarm(void);
 bool AppConverter_ClearFaults(void);
 void AppConverter_EmergencyStop(void);
 
+/* Local human reset. Refuses while the emergency-stop input is still asserted.
+ * A remote ClearFault must not call this.
+ */
+bool AppConverter_AcknowledgeEstop(void);
+
 const converter_runtime_t *AppConverter_GetRuntime(void);
 const volatile uint16_t *AppConverter_GetAdcDmaBuffer(void);
 

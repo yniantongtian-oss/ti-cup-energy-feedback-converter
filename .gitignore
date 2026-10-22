@@ -106,4 +106,15 @@ Thumbs.db
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.coverage
+htmlcov/
 .venv/
+
+# Generated host simulation and coverage outputs
+simulation/output.csv
+simulation/runs/
+build-analysis/
+build-coverage/
+*.gcno
+*.gcda
+*.gcov

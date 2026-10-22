@@ -14,12 +14,13 @@ int main(void) {
     puts("time_s,state,current_a,duty");
     for (int step = 0; step < 200; ++step) {
         const float dt = 0.001f;
+        const float time_s = (float)step * dt;
         converter_step(&converter, &config, &measurement, dt);
         measurement.input_current_a +=
             (converter.duty_command * 2.0f - measurement.input_current_a) * 0.05f;
         if (step % 10 == 0) {
             printf("%.3f,%s,%.4f,%.4f\n",
-                   step * dt,
+                   time_s,
                    converter_state_name(converter.state),
                    measurement.input_current_a,
                    converter.duty_command);
