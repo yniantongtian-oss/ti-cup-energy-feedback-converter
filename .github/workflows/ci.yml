@@ -16,16 +16,20 @@ jobs:
         python: ['3.10', '3.14']
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ matrix.python }}
+      - name: Install test dependencies
+        run: python -m pip install --upgrade pip && python -m pip install -r requirements-dev.txt
       - name: Verify imported sources
         run: python scripts/verify_sources.py
-      - name: Test frame and telemetry integration
-        run: python -m unittest discover -s tests -v
+      - name: Test host tools, control twin, and telemetry
+        run: python -m pytest
       - name: Exercise read-only telemetry request
         run: python examples/host/converter_telemetry.py request
+      - name: Exercise tuning CLI
+        run: python simulation/tune.py run --duration 0.05 --output-dir simulation/runs/ci --json
   portable-core:
     strategy:
       fail-fast: false
@@ -33,7 +37,7 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Configure
         run: cmake -S firmware -B build -DCMAKE_BUILD_TYPE=Release
       - name: Build
@@ -48,3 +52,30 @@ jobs:
         run: .\build\Release\converter_demo.exe | Out-File -Encoding utf8 demo.csv
       - name: Run dependency-free simulation
         run: python simulation/simulate.py --duration 0.1 --output simulation/output.csv
+  static-analysis:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install analyzers
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends cppcheck clang-tidy
+      - name: Run cppcheck and clang-tidy
+        run: bash scripts/static_analysis.sh
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+      - name: Install coverage tools
+        run: python -m pip install --upgrade pip && python -m pip install -r requirements-dev.txt
+      - name: Python branch coverage
+        run: python -m pytest --cov=simulation --cov=examples --cov=tools --cov-fail-under=85
+      - name: Configure instrumented C tests
+        env:
+          CC: gcc
+        run: cmake -S firmware -B build-coverage -DCMAKE_BUILD_TYPE=Debug -DCONVERTER_ENABLE_COVERAGE=ON
+      - name: Build and run C tests
+        run: cmake --build build-coverage --parallel && ctest --test-dir build-coverage --output-on-failure
+      - name: C line coverage
+        run: python -m gcovr --root . --object-directory build-coverage --filter firmware/src --exclude firmware/src/demo.c --fail-under-line 90 --txt --print-summary

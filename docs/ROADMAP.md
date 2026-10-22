@@ -2,11 +2,12 @@
 
 This document outlines the current status and future development plans for **ti-cup-energy-feedback-converter**.
 
-## Current Status (September 2026) | 当前状态
+## Current Status (October 2026) | 当前状态
 
-- Portable C99 control/runtime core is implemented and CI-tested on Windows, macOS and Ubuntu.
-- A STM32F103C8T6 reference adapter, ADC/DMA integration layer and Modbus register map are present.
-- Host-side simulation and software fault/watchdog/calibration logic have automated coverage.
+- Portable C99 control/runtime core is implemented and CI-tested on Windows, macOS and Ubuntu. Release builds keep the C checks active.
+- Host tests cover the PID current loop, SOGI-PLL, and protection thresholds. cppcheck and clang-tidy run in CI.
+- A Python digital twin, SVG plots, and `simulation/tune.py` cover gain trials. This is not a switching or hardware-validated model.
+- A STM32F103C8T6 reference adapter, ADC/DMA integration layer and Modbus register map are present. Fault bits 0–8 follow that map. Parameter CRC is not implemented.
 - The repository does **not** yet contain a manufacturable power-stage design or traceable real-hardware validation evidence.
 - Hardware validation evidence must satisfy `docs/RELEASE_ACCEPTANCE.md` before a hardware-qualified release.
 
@@ -14,9 +15,9 @@ This document outlines the current status and future development plans for **ti-
 
 - [ ] Complete basic STM32 firmware skeleton (control loop, ADC sampling, PWM generation)
 - [ ] Implement core bidirectional power flow control algorithm
-- [ ] Add protection mechanisms (over-voltage, over-current, over-temperature)
-- [ ] Create initial simulation model (MATLAB/Simulink)
-- [ ] Write bilingual getting-started documentation
+- [ ] Add hardware protection beyond the software trips already in the portable core
+- [ ] Create a MATLAB/Simulink or PSIM switching model (the Python averaged twin exists)
+- [x] Write bilingual getting-started documentation for the host core
 - [ ] Add hardware reference schematic (basic version)
 
 ## Medium-term Goals (3-6 months) | 中期目标
@@ -24,7 +25,7 @@ This document outlines the current status and future development plans for **ti-
 - [ ] Full competition-ready firmware with multiple operating modes
 - [ ] Comprehensive test cases and validation on real hardware
 - [ ] Detailed tutorials and example projects for different competition scenarios
-- [ ] CI/CD pipeline for automated building and testing
+- [x] CI pipeline for host builds, C tests, Python tests, coverage, and static analysis
 - [ ] Community feedback collection from other TI Cup teams
 
 ## Long-term Vision | 长期愿景

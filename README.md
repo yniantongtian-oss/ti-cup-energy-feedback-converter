@@ -16,8 +16,9 @@ The repository provides a portable C99 control and runtime core that builds on W
 - ADC calibration, first-order filtering and range checks.
 - A communication command watchdog that stops control and zeros the output after a timeout.
 - Interfaces for hardware fault and emergency-stop shutdown.
-- CMake builds, CTest unit tests and cross-platform GitHub Actions.
-- A host-side CSV demonstration and dependency-free Python averaged model.
+- CMake builds, CTest unit tests that still execute in Release builds, and cross-platform GitHub Actions.
+- Host-side PID, SOGI-PLL and protection tests, plus cppcheck and clang-tidy.
+- A dependency-free Python digital twin of the current loop and PLL, with SVG plots and a JSON tuning CLI.
 - STM32Cube HAL reference wiring for ADC DMA, TIM1 PWM and a 1 ms scheduling tick.
 - MAX485/Modbus RTU pin recommendations, register map and host frame decoder.
 - Twelve input-register telemetry decoding with CRC, signed values, unit conversions and word-order checks.
@@ -35,8 +36,13 @@ cmake -S firmware -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ctest --test-dir build --output-on-failure
 ./build/converter_demo
+python3 -m pip install -r requirements-dev.txt
+python3 -m pytest
 python3 simulation/simulate.py
+python3 simulation/tune.py suggest --require-stable --json
 ```
+
+`simulation/tune.py` prints one JSON object and can write a CSV plus an SVG plot. It tunes the host twin only; it does not flash firmware or arm a power stage.
 
 On Windows with a multi-configuration generator, the demonstration executable is typically at `build/Release/converter_demo.exe`.
 
@@ -71,7 +77,7 @@ Regenerative power electronics and high-voltage tests can cause electric shock, 
 ```text
 firmware/                       Portable control code, runtime, demo and tests
 platforms/stm32f103-bluepill/   Low-voltage STM32Cube HAL reference
-simulation/                     Dependency-free averaged model
+simulation/                     Digital twin, SVG plots and the tuning CLI
 docs/                           Architecture, communication, safety and roadmaps
 hardware/                       Hardware notes and future reference designs
 examples/                       Host integration and bench examples

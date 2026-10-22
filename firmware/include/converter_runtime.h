@@ -52,6 +52,10 @@ void converter_runtime_set_reference(converter_runtime_t *runtime,
                                      uint32_t now_ms);
 void converter_runtime_arm(converter_runtime_t *runtime, uint32_t now_ms);
 void converter_runtime_disarm(converter_runtime_t *runtime);
+void converter_runtime_emergency_stop(converter_runtime_t *runtime);
+
+/* Local acknowledgement only. Remote clear_faults will not clear ESTOP. */
+bool converter_runtime_acknowledge_estop(converter_runtime_t *runtime);
 
 void converter_runtime_step(converter_runtime_t *runtime,
                             const converter_raw_sample_t *raw,

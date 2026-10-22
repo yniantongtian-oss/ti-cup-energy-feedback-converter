@@ -42,10 +42,13 @@ This document describes the overall software and hardware architecture of the en
 
 ## Key Control Loops | 关键控制循环
 
-- Inner current loop (fast)
-- Outer voltage loop
-- Energy feedback / recovery logic
-- Mode switching logic (buck, boost, bidirectional)
+- Inner current loop (fast). The portable core runs a PID whose default derivative gain is zero, with slew limiting and conditional-integration anti-windup.
+- Single-phase SOGI-PLL. It is host-tested and available for a future grid-voltage sample. The Blue Pill 1 ms task does not call it.
+- Outer voltage loop, mode switching, and a full bidirectional modulator are not implemented.
+
+## Host digital twin | 主机数字孪生
+
+`simulation/twin/` repeats the current-loop, protection, and PLL math for gain trials and SVG plots. `simulation/tune.py` is the machine-readable interface: one JSON object on stdout, CSV and SVG artifacts on disk. Trip decisions use the instantaneous calibrated sample; the runtime's first-order filter is only the regulator feedback.
 
 ## Safety & Protection | 安全与保护
 

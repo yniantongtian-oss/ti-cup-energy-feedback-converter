@@ -1,42 +1,36 @@
 # Getting Started | 快速开始
 
-This guide will help you quickly understand and start using the **ti-cup-energy-feedback-converter** project.
+This guide is the host-side path through the portable control core. The STM32F103 reference port is a separate integration step and is not a Keil project inside `firmware/`.
 
 ## Prerequisites | 前置要求
 
-- STM32 development board (F103 / F407 recommended)
-- Keil MDK or STM32CubeIDE
-- Basic knowledge of power electronics and embedded systems
-- Oscilloscope and multimeter for hardware testing
+- CMake 3.16 or newer and a C99 compiler
+- Python 3.10 or newer
+- For board work later: an STM32F103 board, STM32CubeIDE or Keil, and an isolated current-limited supply
 
-## Quick Start Steps | 快速开始步骤
+## Host quick start | 主机快速开始
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/yniantongtian-oss/ti-cup-energy-feedback-converter.git
-   cd ti-cup-energy-feedback-converter
-   ```
+```bash
+git clone https://github.com/yniantongtian-oss/ti-cup-energy-feedback-converter.git
+cd ti-cup-energy-feedback-converter
+cmake -S firmware -B build -DCMAKE_BUILD_TYPE=Debug
+cmake --build build
+ctest --test-dir build --output-on-failure
+python3 -m pip install -r requirements-dev.txt
+python3 -m pytest
+python3 simulation/tune.py run --duration 0.2 --json
+```
 
-2. **Open the firmware project**
-   - Open `firmware/` folder with Keil MDK or STM32CubeIDE
+The tuning command writes `simulation/runs/latest/current_loop.csv` and an SVG plot. Open the SVG in a browser. The JSON on stdout reports settling, overshoot, steady-state error, and fault bits.
 
-3. **Configure hardware**
-   - Refer to `hardware/` directory for schematic reference
-   - Update pin definitions according to your actual board
+## STM32 reference port | STM32 参考端口
 
-4. **Build and flash**
-   - Compile the project
-   - Download to your STM32 board
+`platforms/stm32f103-bluepill/` shows how to call the portable core from STM32Cube HAL. Create the CubeMX project yourself, add the firmware sources listed in that directory's README, and keep the first experiment on an isolated low-voltage supply. Do not open `firmware/` as a Keil power-stage project; that directory is the host-testable C99 library.
 
-5. **Test basic functions**
-   - Check PWM output
-   - Verify ADC sampling
-   - Test protection functions
+## Next steps | 下一步
 
-## Next Steps | 下一步
+- Read `docs/ROADMAP.md` for what is still unvalidated.
+- Read `docs/HARDWARE.md` and `docs/MODBUS_REGISTER_MAP.md` before wiring anything.
+- Use `examples/host/` for Modbus frame decoding. It does not open a serial port.
 
-- Read `docs/ROADMAP.md` to understand development plans
-- Check `docs/HARDWARE.md` for hardware details
-- Explore `examples/` folder for competition scenarios
-
-> **Note**: This project is still under active development. More complete code and tutorials will be added progressively.
+> Software protection and the digital twin do not replace fuses, isolation, hardware comparators, or a qualified review.

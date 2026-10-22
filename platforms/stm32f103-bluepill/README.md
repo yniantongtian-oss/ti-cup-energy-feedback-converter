@@ -41,12 +41,13 @@
 ## 集成步骤
 
 1. 新建 STM32CubeIDE/Keil 工程并生成 HAL 初始化代码。
-2. 把 `firmware/include/*.h` 与 `firmware/src/converter*.c` 加入工程。
+2. 把 `firmware/include/*.h` 与 `firmware/src/` 下除 `demo.c` 以外的源文件加入工程。
 3. 把本目录的 `Core/Inc/app_converter.h` 和 `Core/Src/app_converter.c` 加入工程。
 4. 在外设初始化完成后调用 `AppConverter_Init()`。
 5. ADC DMA 启动后，每 1 ms 调用 `AppConverter_1msTask()`。
-6. 在硬件故障和急停 EXTI 中调用 `AppConverter_EmergencyStop()`。
-7. 在 Modbus 写寄存器回调中调用设置参考值、解锁、停机或清故障接口。
+6. 在硬件故障和急停 EXTI 中调用 `AppConverter_EmergencyStop()`。急停锁存后只能由本地复位调用 `AppConverter_AcknowledgeEstop()`，并且该函数在急停输入仍为低电平时会失败。
+7. `AppConverter_Arm()` 还要求已经收到一帧有效采样。
+8. 在 Modbus 写寄存器回调中调用设置参考值、解锁、停机或清故障接口。远程清故障不能代替 `AppConverter_AcknowledgeEstop()`。
 
 ## 必须实现的硬件保护
 

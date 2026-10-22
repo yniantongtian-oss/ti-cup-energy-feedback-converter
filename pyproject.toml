@@ -1,0 +1,15 @@
+[project]
+name = "ti-cup-energy-feedback-converter"
+version = "0.3.0"
+description = "Host-side twin and tests for an energy-feedback converter control core"
+requires-python = ">=3.10"
+readme = "README.md"
+license = "MIT"
+dependencies = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+source = ["simulation", "examples", "tools"]
