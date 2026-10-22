@@ -6,7 +6,10 @@
 #include <stddef.h>
 
 static float calibrated_count(uint16_t raw, float gain, float offset) {
-    return (float)raw * gain + offset;
+    /* Two statements so Clang cannot contract this into an FMA. The fused
+     * result differs in the last bits (750 * 0.1 - 50 is not exactly 25). */
+    const float scaled = (float)raw * gain;
+    return scaled + offset;
 }
 
 static bool adc_counts_valid(const converter_runtime_t *runtime, const converter_raw_sample_t *raw) {

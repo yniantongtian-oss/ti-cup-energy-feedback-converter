@@ -19,7 +19,9 @@ if(MSVC)
     target_compile_options(converter_core PRIVATE /W4 /WX)
     set(PLATFORM_MATH_LIBRARY "")
 else()
-    target_compile_options(converter_core PRIVATE -Wall -Wextra -Wpedantic -Werror)
+    # Keep multiply-add in separate roundings. Clang contracts by default and
+    # that changes calibrated ADC values in the last bits.
+    target_compile_options(converter_core PRIVATE -Wall -Wextra -Wpedantic -Werror -ffp-contract=off)
     set(PLATFORM_MATH_LIBRARY m)
 endif()
 
