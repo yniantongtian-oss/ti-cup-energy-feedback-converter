@@ -2,4 +2,4 @@
 # The firmware core and the digital twin import only the Python standard library.
 pytest==9.1.1
 pytest-cov==7.1.0
-gcovr==8.7
+gcovr==8.8
